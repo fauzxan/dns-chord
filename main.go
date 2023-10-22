@@ -1,7 +1,7 @@
 package main
 
 import (
-	"core/client"
+	"core/node"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -24,12 +24,12 @@ func extract_fingertable() map[int]string{
 	}
 	// fmt.Println(extracteddata)
 	var fingertable = make(map[int]string)
-	for _, client := range extracteddata{
-		id, err := strconv.Atoi(client["Clientid"])
+	for _, node := range extracteddata{
+		id, err := strconv.Atoi(node["Nodeid"])
 		if err!=nil{
 			panic(err) //  we will be changing ids to hash functions later. Need to remove this. 
 		}
-		fingertable[id] = client["IP"]
+		fingertable[id] = node["IP"]
 	}
 	return fingertable
 }
@@ -37,7 +37,7 @@ func extract_fingertable() map[int]string{
 
 func main(){
 	// fmt.Println("Yo")
-	var me = client.Client{
+	var me = node.Node{
 		FingerTable: make(map[int]string),
 	}
 	me.FingerTable = extract_fingertable()
@@ -50,10 +50,9 @@ func main(){
 	inbound, err := net.ListenTCP("tcp", address)
 	if err != nil {
 		fmt.Println("Could not listen to TCP address")
-
 	}
 	rpc.Register(&me)
-	fmt.Println("Client is runnning at IP address", address)
+	fmt.Println("Node is runnning at IP address", address)
 	go rpc.Accept(inbound)
 	for {
 		time.Sleep(1000)
