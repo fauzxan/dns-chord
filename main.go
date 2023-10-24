@@ -6,7 +6,6 @@ import (
 	"net/rpc"
 	"os"
 	"time"
-
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 )
@@ -25,6 +24,10 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "-p" {
 		menu.Println("Port number specified is", os.Args[2])
 		port = os.Args[2]
+	}
+
+	if len(os.Args) > 2 && os.Args[3] == "-j" {
+		menu.Println("Client to join using has port number", os.Args[4])
 	}
 
 	// Create new Node object for yourself
