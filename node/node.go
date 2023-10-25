@@ -138,6 +138,9 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 		system.Println("Error Dialing RPC:", err)
 	}
 	reply := message.ResponseMessage{}
-	err = clnt.Call("Node.HandleIncomingCommunication", msg, &reply)
+	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
+	if err != nil{
+		system.Println(err)
+	}
 	return reply
 }
