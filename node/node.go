@@ -34,10 +34,11 @@ var system = color.New(color.FgHiGreen).Add(color.BgBlack)
 // TODO
 func (node *Node) JoinNetwork(helper string) {
 	// system.Println("Joining network...")
-	if len(strings.Split(helper, ":")) > 1 { // I am the only node in this network
+	if len(strings.Split(helper, ":")) == 1 { // I am the only node in this network
 		system.Println("I am creating a new network...")
 		node.Successor = Pointer{Nodeid: node.Nodeid, Ip: node.IP}
 		node.Predecessor = Pointer{}
+		node.FingerTable = make([]Pointer, 64)
 		node.createFingerTable(node.Nodeid)
 		system.Println("Finger table has been updated...", node.FingerTable)
 	} else { // I am not the only one in this network, and I am joining using someone elses address-> "helper"
@@ -45,6 +46,7 @@ func (node *Node) JoinNetwork(helper string) {
 		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: node.Nodeid}, helper)
 		node.Successor = Pointer{Nodeid: reply.Nodeid, Ip: reply.IP}
 		node.Predecessor = Pointer{}
+		node.FingerTable = make([]Pointer, 64)
 		node.createFingerTable(node.Nodeid)
 		system.Println("Finger table has been updated...", node.FingerTable)
 	}
