@@ -10,7 +10,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var menu = color.New(color.FgCyan).Add(color.BgBlack)
+var system = color.New(color.FgCyan).Add(color.BgBlack)
 
 const PING = "ping"
 
@@ -18,38 +18,45 @@ func main() {
 	// get port from cli arguments (specified by user)
 	err := godotenv.Load()
 	if err != nil {
-		menu.Println("Error getting env variables...")
-	}
-	var port string
-	if len(os.Args) > 1 && os.Args[1] == "-p" {
-		menu.Println("Port number specified is", os.Args[2])
-		port = os.Args[2]
+		system.Println("Error getting env variables...")
 	}
 
-	if len(os.Args) > 2 && os.Args[3] == "-j" {
-		menu.Println("Client to join using has port number", os.Args[4])
+	var IPADDRESS = os.Getenv("IPADDRESS")
+	
+	var port string
+	var joinerPort string
+	for i, arg := range os.Args{
+		if arg == "-p"{
+			if (i+1 > len(os.Args)){panic("Enter a valid port number for self!!")}
+			system.Println("Port number specified is", os.Args[i+1])
+			port = os.Args[i+1]
+		}else if arg == "-u"{
+			if (i+1 > len(os.Args)){panic("Enter a valid port number that you are going to use!!")} 
+			system.Println("Client to join using has port number", os.Args[i+1])
+			joinerPort = ":" + os.Args[i+1]
+		}
 	}
 
 	// Create new Node object for yourself
 	var me = node.Node{}
-	var addr = os.Getenv("IPADDRESS") + ":" + port
+	var addr = IPADDRESS + ":" + port
 	me.IP = addr
 	me.Nodeid = GenerateHash(addr)
 
 	// Bind yourself to a port and listen to it
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
-		menu.Println("Error resolving TCP address")
-	}
+		system.Println("Error resolving TCP address")
+	}	
 	inbound, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
-		menu.Println("Could not listen to TCP address")
+		system.Println("Could not listen to TCP address")
 	}
 
 	rpc.Register(&me)
-	menu.Println("Node is runnning at IP address:", tcpAddr)
+	system.Println("Node is runnning at IP address:", tcpAddr)
 	go rpc.Accept(inbound)
-	me.JoinNetwork()
+	go me.JoinNetwork(IPADDRESS + joinerPort)
 
 	// Keep the parent thread alive
 	for {

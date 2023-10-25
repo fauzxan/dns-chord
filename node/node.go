@@ -2,57 +2,116 @@ package node
 
 import (
 	"core/message"
-	"fmt"
+	"math"
 	"net/rpc"
+	"strings"
+	"time"
+
+	"github.com/fatih/color"
 )
 
-/*
-Main logic for:
-1. node joining
-2. planned departure
-3. find_successor
-4. closest_preceding_node
-*/
+type Pointer struct {
+	Nodeid uint64
+	Ip     string
+}
+
 type Node struct {
-	Nodeid      uint64            // ID of the node in the fingertable
-	IP          string            // localhost or IP address AND port number. Can be set through environment variables
-	FingerTable map[string]string // id mapping to ip address
-	Successor   string            // IP of it's direct successor.
+	Nodeid      uint64    // ID of the node
+	IP          string    // localhost or IP address AND port number. Can be set through environment variables.
+	FingerTable []Pointer // id mapping to ip address
+	Successor   Pointer   // Nodeid of it's direct successor.
+	Predecessor Pointer   // Nodeid of it's direct predecessor.
 }
 
 // Message types
 const PING = "ping"
 const ACK = "ack"
+const FIND_SUCCESSOR = "find_successor"
+const CLOSEST_PRECEDING_NODE = "closest_preceding_node"
+
+var system = color.New(color.FgHiGreen).Add(color.BgBlack)
 
 // TODO
-func (node *Node) JoinNetwork() {
-	fmt.Println("Joining network...")
+func (node *Node) JoinNetwork(helper string) {
+	// system.Println("Joining network...")
+	if len(strings.Split(helper, ":")) > 1 { // I am the only node in this network
+		system.Println("I am creating a new network...")
+		node.Successor = Pointer{Nodeid: node.Nodeid, Ip: node.IP}
+		node.Predecessor = Pointer{}
+		node.createFingerTable(node.Nodeid)
+		system.Println("Finger table has been updated...", node.FingerTable)
+	} else { // I am not the only one in this network, and I am joining using someone elses address-> "helper"
+		system.Println("Contacting node in network at address", helper)
+		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: node.Nodeid}, helper)
+		node.Successor = Pointer{Nodeid: reply.Nodeid, Ip: reply.IP}
+		node.Predecessor = Pointer{}
+		node.createFingerTable(node.Nodeid)
+		system.Println("Finger table has been updated...", node.FingerTable)
+	}
 }
 
-func (node *Node) Send(nodeid string, msg message.Message) {
+func (node *Node) Sendping(nodeid string) {
 	clnt, err := rpc.Dial("tcp", "127.0.0.1:3004")
 	if err != nil {
-		fmt.Println("Error Dialing RPC:", err)
+		system.Println("Error Dialing RPC:", err)
 	}
-
-	reply := message.Message{}
+	msg := message.RequestMessage{Type: PING}
+	reply := message.ResponseMessage{}
 
 	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
 	if err != nil {
-		fmt.Println("Error Calling RPC:", err)
+		system.Println("Error Calling RPC:", err)
 	}
 	if reply.Type == ACK {
-		fmt.Println("Received an ACK")
+		system.Println("Received an ACK")
 	}
 }
 
-func (node *Node) HandleIncomingMessage(msg *message.Message, reply *message.Message) error {
-	fmt.Println("Message of type", msg.Type, "received.")
-	if msg.Type == PING {
-		reply.Type = ACK
+func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *message.ResponseMessage) error {
+	system.Println("Message of type", msg.Type, "received.")
+
+	for {
+		switch msg.Type {
+		case PING:
+			// watever
+		case ACK:
+			// ...
+		case FIND_SUCCESSOR:
+			node.FindSuccessor(msg.TargetId)
+		default:
+			// system.Println("Client is alive and listening")
+			time.Sleep(1000)
+		}
 	}
-	return nil
 }
+
+func (node *Node) FindSuccessor(id uint64) Pointer {
+	if belongsTo(id, node.Nodeid, node.FingerTable[0].Nodeid) {
+		return node.FingerTable[0]
+	}
+	p := node.ClosestPrecedingNode(id)
+	reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: id}, p.Ip)
+	return Pointer{Nodeid: reply.Nodeid, Ip: reply.IP}
+}
+
+func (node *Node) ClosestPrecedingNode(id uint64) Pointer {
+	for i := 64; i >= 0; i-- {
+		if belongsTo(node.FingerTable[i].Nodeid, node.Nodeid, id) {
+			return node.FingerTable[i]
+		}
+	}
+	return Pointer{Nodeid: id, Ip: node.IP}
+}
+
+func (node *Node) createFingerTable(nodeid uint64) {
+	for i := 0; i < 64; i++ {
+		node.FingerTable[i] = node.FindSuccessor(node.Nodeid + uint64(math.Pow(2, float64(i)))) // possible floating point error here.
+	}
+}
+
+// func (node *Node) createFingerTable() {
+// 	for i
+// }
 
 /*
 ***************************************
@@ -60,24 +119,23 @@ func (node *Node) HandleIncomingMessage(msg *message.Message, reply *message.Mes
 ***************************************
 */
 
-/*
-Version 1:
-fingerTable []Node <-- list of Nodes. ith entry is the closest successor
+// To check if an ID is in a given range (right-inclusive).
+func belongsTo(id, a, b uint64) bool {
+	if a == b {
+		return true
+	}
+	if a < b {
+		return a < id && id <= b
+	}
+	return a < id || id <= b
+}
 
-for i in range 0 to m
-[i] --> closest_successor(nodeid + 2^i)
-
-Resulting structure: [Node{Nodeid, IP}]
-
-Version 2:
-
-fingerTable map[uint64][]Node <-- mapping nodeid+2^i to copy of node structure rerpresenting successor of nodeid+2^i
-
-for i in range 0 to m
-(nodeid + 2^i) : closest_successor(nodeid + 2^i)
-
-Resulting structure: {nodeid+2^i : Node{Nodeid, IP}}
-
-*/
-
-// 
+func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
+	clnt, err := rpc.Dial("tcp", IP)
+	if err != nil {
+		system.Println("Error Dialing RPC:", err)
+	}
+	reply := message.ResponseMessage{}
+	err = clnt.Call("Node.HandleIncomingCommunication", msg, &reply)
+	return reply
+}

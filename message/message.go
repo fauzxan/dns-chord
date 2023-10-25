@@ -1,11 +1,19 @@
 package message
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Sample message structure. To be replaced with a struct for protobuff
-type Message struct{
-	Content string
-	Type string // PING | SYNC | ACK
+type RequestMessage struct{
+	Type string // PING | SYNC | ACK | FIND_SUCCESSOR | CLOSEST_PRECEDING_NODE
+	TargetId uint64
+}
+
+type ResponseMessage struct {
+	Type string
+	Nodeid uint64
+	IP string
 }
 
 /*
@@ -13,6 +21,10 @@ type Message struct{
 		UTILITY FUNCTIONS
 ***************************************	
 */
-func (msg *Message) PrintContent(){
-	fmt.Println("Message content:", msg.Content)
+func (msg *RequestMessage) PrintContent(){
+	fmt.Println("Message content:", msg)
+}
+
+func (msg *ResponseMessage) PrintContent(){
+	fmt.Println("Message content:", msg)
 }
