@@ -5,13 +5,13 @@ package message;
 option go_package = "./message";
 
 message RequestMessage {
-    string RequestType = 1;
+    string Type = 1;
     uint64  TargetId= 2;
-    string IP = 1;
+    string IP = 3;
 }
 
 message ResponseMessage {
-    string RepsonseType = 1;
+    string Type = 1;
     uint64 Nodeid = 2;
     string IP = 3;
 }
