@@ -5,7 +5,6 @@ go 1.21.1
 require (
 	github.com/fatih/color v1.15.0
 	github.com/joho/godotenv v1.5.1
-	google.golang.org/protobuf v1.31.0
 )
 
 require (

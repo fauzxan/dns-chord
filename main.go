@@ -14,15 +14,18 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Color coded logs
 var system = color.New(color.FgCyan).Add(color.BgBlack)
 
-const PING = "ping"
-
+/*
+Show a list of options to choose from.
+*/
 func showmenu() {
 	system.Println("********************************")
 	system.Println("\t\tMENU")
 	system.Println("Press 1 to see the fingertable")
-	system.Println("Press m to see the fingertable")
+	system.Println("Press 2 to see the successor and predecessor")
+	system.Println("Press m to see the menu")
 	system.Println("********************************")
 }
 
@@ -37,7 +40,6 @@ func main() {
 
 	var port string
 	var joinerPort string
-	var ClientNode bool
 	for i, arg := range os.Args {
 		if arg == "-p" {
 			if i+1 > len(os.Args) {
@@ -51,67 +53,32 @@ func main() {
 			}
 			system.Println("Client to join using has port number", os.Args[i+1])
 			joinerPort = ":" + os.Args[i+1]
-		} else if arg == "-c" {
-			system.Println("This is a clientnode!")
-			ClientNode = true
 		}
 	}
 
-	var meNormal *node.Node
-	var meClient *node.ClientNode
 	// Create new Node object for yourself
-	if ClientNode {
-		me := node.ClientNode{}
-		var addr = IPADDRESS + ":" + port
-		me.IP = addr
-		me.Nodeid = utility.GenerateHash(addr)
-		system.Println("My id is:", me.Nodeid)
+	me := node.Node{}
+	var addr = IPADDRESS + ":" + port
+	me.IP = addr
+	me.Nodeid = utility.GenerateHash(addr)
+	system.Println("My id is:", me.Nodeid)
 
-		// Bind yourself to a port and listen to it
-		tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
-		if err != nil {
-			system.Println("Error resolving TCP address", err)
-		}
-		inbound, err := net.ListenTCP("tcp", tcpAddr)
-		if err != nil {
-			system.Println("Could not listen to TCP address", err)
-		}
-
-		// Register RPC methods and accept incoming requests
-		rpc.Register(&me)
-		system.Println("Node is runnning at IP address:", tcpAddr)
-		go rpc.Accept(inbound)
-
-		//me.QueryDNS("google.com")
-		me.JoinNetwork(IPADDRESS + joinerPort)
-
-		meClient = &me
-	} else {
-		me := node.Node{}
-		var addr = IPADDRESS + ":" + port
-		me.IP = addr
-		me.Nodeid = utility.GenerateHash(addr)
-		system.Println("My id is:", me.Nodeid)
-
-		// Bind yourself to a port and listen to it
-		tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
-		if err != nil {
-			system.Println("Error resolving TCP address", err)
-		}
-		inbound, err := net.ListenTCP("tcp", tcpAddr)
-		if err != nil {
-			system.Println("Could not listen to TCP address", err)
-		}
-
-		// Register RPC methods and accept incoming requests
-		rpc.Register(&me)
-		system.Println("Node is runnning at IP address:", tcpAddr)
-		go rpc.Accept(inbound)
-
-		me.JoinNetwork(IPADDRESS + joinerPort)
-
-		meNormal = &me
+	// Bind yourself to a port and listen to it
+	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		system.Println("Error resolving TCP address", err)
 	}
+	inbound, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		system.Println("Could not listen to TCP address", err)
+	}
+
+	// Register RPC methods and accept incoming requests
+	rpc.Register(&me)
+	system.Println("Node is runnning at IP address:", tcpAddr)
+	go rpc.Accept(inbound)
+
+	me.JoinNetwork(IPADDRESS + joinerPort)
 
 	showmenu()
 	// Keep the parent thread alive
@@ -119,16 +86,19 @@ func main() {
 		time.Sleep(1000)
 		var input string
 		fmt.Scanln(&input)
-		if input == "1" && meClient != nil {
-			//meClient.ShowFingers()
-		} else if input == "1" && meNormal != nil {
-			meNormal.ShowFingers()
+		if input == "1" {
+			me.ShowFingers()
 		} else if strings.HasPrefix(input, "query") {
 			system.Print("Please Type the Website: ")
 			fmt.Scanln(&input)
-			meNormal.QueryDNS(input)
+			me.QueryDNS(input)
 		} else if strings.ToLower(input) == "m" {
 			showmenu()
+		} else if input == "2" {
+			system.Println("\n\nSuccessor")
+			me.PrintSuccessor()
+			system.Println("Predecessor")
+			me.PrintPredecessor()
 		}
 	}
 

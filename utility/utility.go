@@ -12,8 +12,11 @@ import (
 ***************************************
 */
 
-const M = 64
+const M = 32
 
+/*
+Function to generate the hash of the the input IP address
+*/
 func GenerateHash(input string) uint64 {
 	data := []byte(input)
 	id := sha256.Sum256(data)
