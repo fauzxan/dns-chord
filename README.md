@@ -1,7 +1,7 @@
 # dns-chord
 Implementing DNS functionality using chord framework
 
-
+🚀 [Problem description](https://github.com/fauzxan/dns-chord/blob/main/documentation/problem-description.md)
 
 ## Setup
 
