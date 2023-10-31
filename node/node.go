@@ -35,34 +35,33 @@ var system = color.New(color.FgHiGreen).Add(color.BgBlack)
 var systemcommsin = color.New(color.FgHiMagenta).Add(color.BgBlack)
 var systemcommsout = color.New(color.FgHiYellow).Add(color.BgBlack)
 
-
 func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *message.ResponseMessage) error {
 	systemcommsin.Println("Message of type", msg.Type, "received.")
 	switch msg.Type {
-		case PING:
-			// watever
+	case PING:
+		// watever
+		reply.Type = ACK
+	case ACK:
+		// ...
+	case FIND_SUCCESSOR:
+		systemcommsin.Println("Received a message to find successor of", msg.TargetId)
+		pointer := node.FindSuccessor(msg.TargetId)
+		reply.Type = ACK
+		reply.Nodeid = pointer.Nodeid
+		reply.IP = pointer.IP
+	case NOTIFY:
+		systemcommsin.Println("Received a message to notify me about a new predecessor")
+		status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
+		if status {
 			reply.Type = ACK
-		case ACK:
-			// ...
-		case FIND_SUCCESSOR:
-			systemcommsin.Println("Received a message to find successor of", msg.TargetId)
-			pointer := node.FindSuccessor(msg.TargetId)
-			reply.Type = ACK
-			reply.Nodeid = pointer.Nodeid
-			reply.IP = pointer.IP
-		case NOTIFY:
-			systemcommsin.Println("Received a message to notify me about a new predecessor")
-			status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
-			if status {
-				reply.Type = ACK
-			}
-		case GET_PREDECESSOR:
-			systemcommsin.Println("Received a message to get predecessor")
-			reply.Nodeid = node.Predecessor.Nodeid
-			reply.IP = node.Predecessor.IP
-		default:
-			// system.Println("Client is alive and listening")
-			time.Sleep(1000)
+		}
+	case GET_PREDECESSOR:
+		systemcommsin.Println("Received a message to get predecessor")
+		reply.Nodeid = node.Predecessor.Nodeid
+		reply.IP = node.Predecessor.IP
+	default:
+		// system.Println("Client is alive and listening")
+		time.Sleep(1000)
 	}
 	return nil
 }
@@ -87,8 +86,8 @@ func (node *Node) JoinNetwork(helper string) {
 		system.Println("Finger table has been updated...", node.FingerTable)
 	}
 	go node.stabilize()
-}
 
+}
 
 // UNUSED FUNCTION
 func (node *Node) Sendping(nodeid string) {
@@ -149,34 +148,40 @@ func (node *Node) createFingerTable(nodeid uint64) {
 func (node *Node) stabilize() {
 	for {
 		time.Sleep(5 * time.Second)
-		if (node.Successor.IP == node.IP) {continue} // Don't need to call your own 
 		reply := node.CallRPC(
 			message.RequestMessage{Type: GET_PREDECESSOR, TargetId: node.Successor.Nodeid, IP: node.Successor.IP},
 			node.Successor.IP,
 		)
 		sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
-		if (sucessorsPredecessor != Pointer{}) { // Only execute this block if the successorsPredecessor is not nil
-			if belongsTo(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
+		if (sucessorsPredecessor != Pointer{}) { // Only execute this block if the successorsPredecessor  is not nil
+			if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
 				node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 			}
-			reply = node.CallRPC(
-				message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
-				node.Successor.IP,
-			)
-			if reply.Type == ACK {
-				system.Println("Successfully notified successor of it's new predecessor")
-			}
+		}
+		
+		reply = node.CallRPC(
+			message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
+			node.Successor.IP,
+		)
+		if reply.Type == ACK {
+			system.Println("Successfully notified successor of it's new predecessor")
+		}
 		}
 	}
 
-}
-
 func (node *Node) Notify(x Pointer) bool {
 
-	if (node.Predecessor == Pointer{} || belongsTo(x.Nodeid, node.Predecessor.Nodeid, node.Nodeid)) {
+	if (node.Predecessor == Pointer{} || between(x.Nodeid, node.Predecessor.Nodeid, node.Nodeid)) {
 		node.Predecessor = Pointer{Nodeid: x.Nodeid, IP: x.IP}
 	}
 	return true
+}
+
+func (node *Node) CheckPredecessor(){
+	for {
+		time.Sleep(5 * time.Second)
+		system.Println("My predecessor is", node.Predecessor)
+	}
 }
 
 /*
@@ -194,6 +199,11 @@ func belongsTo(id, a, b uint64) bool {
 		return a < id && id <= b
 	}
 	return a < id || id <= b
+}
+
+// To check if an ID is in a given range (a, b).
+func between(id, a, b uint64) bool {
+	return a < b && id > a && id < b
 }
 
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
@@ -214,3 +224,18 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 	systemcommsin.Println("Received reply", reply)
 	return reply
 }
+
+func (node *Node) ShowFingers() {
+	system.Println("\n\nFINGER TABLE REQUESTED")
+	system.Println(node.FingerTable)
+}
+
+
+
+
+// 3001: 3129986787882157568
+// 3000: 6118645849240836096
+// 3002: 11087324024473362432
+
+
+// 2^64: 18,446,744,073,709,551,616
