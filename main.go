@@ -71,6 +71,4 @@ func main() {
 		time.Sleep(1000)
 	}
 
-	
-
 }

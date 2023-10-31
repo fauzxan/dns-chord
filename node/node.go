@@ -2,8 +2,11 @@ package node
 
 import (
 	"core/message"
+	"fmt"
 	"math"
+	"net"
 	"net/rpc"
+	"os"
 	"strings"
 	"time"
 
@@ -16,11 +19,13 @@ type Pointer struct {
 }
 
 type Node struct {
-	Nodeid      uint64    // ID of the node
-	IP          string    // localhost or IP address AND port number. Can be set through environment variables.
-	FingerTable []Pointer // id mapping to ip address
-	Successor   Pointer   // Nodeid of it's direct successor.
-	Predecessor Pointer   // Nodeid of it's direct predecessor.
+	Nodeid        uint64            // ID of the node
+	IP            string            // localhost or IP address AND port number. Can be set through environment variables.
+	FingerTable   []Pointer         // id mapping to ip address
+	Successor     Pointer           // Nodeid of it's direct successor.
+	Predecessor   Pointer           // Nodeid of it's direct predecessor.
+	HashIPStorage map[string]string //Node's storage for the hashed ip
+	CachedQuery   map[string]string //For Common Queries, don't go into the network
 }
 
 // Message types
@@ -35,34 +40,33 @@ var system = color.New(color.FgHiGreen).Add(color.BgBlack)
 var systemcommsin = color.New(color.FgHiMagenta).Add(color.BgBlack)
 var systemcommsout = color.New(color.FgHiYellow).Add(color.BgBlack)
 
-
 func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *message.ResponseMessage) error {
 	systemcommsin.Println("Message of type", msg.Type, "received.")
 	switch msg.Type {
-		case PING:
-			// watever
+	case PING:
+		// watever
+		reply.Type = ACK
+	case ACK:
+		// ...
+	case FIND_SUCCESSOR:
+		systemcommsin.Println("Received a message to find successor of", msg.TargetId)
+		pointer := node.FindSuccessor(msg.TargetId)
+		reply.Type = ACK
+		reply.Nodeid = pointer.Nodeid
+		reply.IP = pointer.IP
+	case NOTIFY:
+		systemcommsin.Println("Received a message to notify me about a new predecessor")
+		status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
+		if status {
 			reply.Type = ACK
-		case ACK:
-			// ...
-		case FIND_SUCCESSOR:
-			systemcommsin.Println("Received a message to find successor of", msg.TargetId)
-			pointer := node.FindSuccessor(msg.TargetId)
-			reply.Type = ACK
-			reply.Nodeid = pointer.Nodeid
-			reply.IP = pointer.IP
-		case NOTIFY:
-			systemcommsin.Println("Received a message to notify me about a new predecessor")
-			status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
-			if status {
-				reply.Type = ACK
-			}
-		case GET_PREDECESSOR:
-			systemcommsin.Println("Received a message to get predecessor")
-			reply.Nodeid = node.Predecessor.Nodeid
-			reply.IP = node.Predecessor.IP
-		default:
-			// system.Println("Client is alive and listening")
-			time.Sleep(1000)
+		}
+	case GET_PREDECESSOR:
+		systemcommsin.Println("Received a message to get predecessor")
+		reply.Nodeid = node.Predecessor.Nodeid
+		reply.IP = node.Predecessor.IP
+	default:
+		// system.Println("Client is alive and listening")
+		time.Sleep(1000)
 	}
 	return nil
 }
@@ -88,7 +92,6 @@ func (node *Node) JoinNetwork(helper string) {
 	}
 	go node.stabilize()
 }
-
 
 // UNUSED FUNCTION
 func (node *Node) Sendping(nodeid string) {
@@ -149,7 +152,9 @@ func (node *Node) createFingerTable(nodeid uint64) {
 func (node *Node) stabilize() {
 	for {
 		time.Sleep(5 * time.Second)
-		if (node.Successor.IP == node.IP) {continue} // Don't need to call your own 
+		if node.Successor.IP == node.IP {
+			continue
+		} // Don't need to call your own
 		reply := node.CallRPC(
 			message.RequestMessage{Type: GET_PREDECESSOR, TargetId: node.Successor.Nodeid, IP: node.Successor.IP},
 			node.Successor.IP,
@@ -213,4 +218,17 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 	}
 	systemcommsin.Println("Received reply", reply)
 	return reply
+}
+
+func (node *Node) queryDNS(website string) {
+	ips, err := net.LookupIP(website)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
+		os.Exit(1)
+	}
+	for _, ip := range ips {
+		fmt.Printf("%s. IN A %s\n", website, ip.String())
+	}
+	// node.CachedQuery[website] = ip.String();
+
 }
