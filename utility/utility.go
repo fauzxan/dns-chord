@@ -1,4 +1,4 @@
-package main
+package utility
 
 import (
 	"crypto/sha256"
@@ -14,7 +14,7 @@ import (
 
 const M = 64
 
-func GenerateHash(input string) uint64{
+func GenerateHash(input string) uint64 {
 	data := []byte(input)
 	id := sha256.Sum256(data)
 	unmoddedID := float64(binary.BigEndian.Uint64(id[:8]))

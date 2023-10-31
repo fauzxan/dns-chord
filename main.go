@@ -2,6 +2,7 @@ package main
 
 import (
 	"core/node"
+	"core/utility"
 	"fmt"
 	"net"
 	"net/rpc"
@@ -63,7 +64,7 @@ func main() {
 		me := node.ClientNode{}
 		var addr = IPADDRESS + ":" + port
 		me.IP = addr
-		me.Nodeid = GenerateHash(addr)
+		me.Nodeid = utility.GenerateHash(addr)
 		system.Println("My id is:", me.Nodeid)
 
 		// Bind yourself to a port and listen to it
@@ -81,6 +82,7 @@ func main() {
 		system.Println("Node is runnning at IP address:", tcpAddr)
 		go rpc.Accept(inbound)
 
+		//me.QueryDNS("google.com")
 		me.JoinNetwork(IPADDRESS + joinerPort)
 
 		meClient = &me
@@ -88,7 +90,7 @@ func main() {
 		me := node.Node{}
 		var addr = IPADDRESS + ":" + port
 		me.IP = addr
-		me.Nodeid = GenerateHash(addr)
+		me.Nodeid = utility.GenerateHash(addr)
 		system.Println("My id is:", me.Nodeid)
 
 		// Bind yourself to a port and listen to it
@@ -118,11 +120,16 @@ func main() {
 		var input string
 		fmt.Scanln(&input)
 		if input == "1" && meClient != nil {
-			meClient.ShowFingers()
+			//meClient.ShowFingers()
 		} else if input == "1" && meNormal != nil {
 			meNormal.ShowFingers()
+		} else if strings.HasPrefix(input, "query") {
+			system.Print("Please Type the Website: ")
+			fmt.Scanln(&input)
+			meNormal.QueryDNS(input)
 		} else if strings.ToLower(input) == "m" {
 			showmenu()
 		}
 	}
+
 }

@@ -2,7 +2,7 @@ package node
 
 import (
 	"core/message"
-	"fmt"
+	"core/utility"
 	"math"
 	"net"
 	"net/rpc"
@@ -19,13 +19,13 @@ type Pointer struct {
 }
 
 type Node struct {
-	Nodeid        uint64            // ID of the node
-	IP            string            // localhost or IP address AND port number. Can be set through environment variables.
-	FingerTable   []Pointer         // id mapping to ip address
-	Successor     Pointer           // Nodeid of it's direct successor.
-	Predecessor   Pointer           // Nodeid of it's direct predecessor.
-	HashIPStorage map[string]string //Node's storage for the hashed ip
-	CachedQuery   map[string]string //For Common Queries, don't go into the network
+	Nodeid      uint64    // ID of the node
+	IP          string    // localhost or IP address AND port number. Can be set through environment variables.
+	FingerTable []Pointer // id mapping to ip address
+	Successor   Pointer   // Nodeid of it's direct successor.
+	Predecessor Pointer   // Nodeid of it's direct predecessor.
+	Logging     bool      //logging for messages
+	CachedQuery map[uint64]string
 }
 
 // Message types
@@ -41,7 +41,9 @@ var systemcommsin = color.New(color.FgHiMagenta).Add(color.BgBlack)
 var systemcommsout = color.New(color.FgHiYellow).Add(color.BgBlack)
 
 func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *message.ResponseMessage) error {
-	systemcommsin.Println("Message of type", msg.Type, "received.")
+	if node.Logging {
+		systemcommsin.Println("Message of type", msg.Type, "received.")
+	}
 	switch msg.Type {
 	case PING:
 		// watever
@@ -49,19 +51,25 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 	case ACK:
 		// ...
 	case FIND_SUCCESSOR:
-		systemcommsin.Println("Received a message to find successor of", msg.TargetId)
+		if node.Logging {
+			systemcommsin.Println("Received a message to find successor of", msg.TargetId)
+		}
 		pointer := node.FindSuccessor(msg.TargetId)
 		reply.Type = ACK
 		reply.Nodeid = pointer.Nodeid
 		reply.IP = pointer.IP
 	case NOTIFY:
-		systemcommsin.Println("Received a message to notify me about a new predecessor")
+		if node.Logging {
+			systemcommsin.Println("Received a message to notify me about a new predecessor")
+		}
 		status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
 		if status {
 			reply.Type = ACK
 		}
 	case GET_PREDECESSOR:
-		systemcommsin.Println("Received a message to get predecessor")
+		if node.Logging {
+			systemcommsin.Println("Received a message to get predecessor")
+		}
 		reply.Nodeid = node.Predecessor.Nodeid
 		reply.IP = node.Predecessor.IP
 	default:
@@ -79,7 +87,10 @@ func (node *Node) JoinNetwork(helper string) {
 		node.Predecessor = Pointer{}
 		node.FingerTable = make([]Pointer, 64)
 		node.createFingerTable(node.Nodeid)
-		system.Println("Finger table has been updated...", node.FingerTable)
+		system.Println("Finger table has been updated...")
+		for i := 0; i < len(node.FingerTable); i++ {
+			system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
+		}
 	} else { // I am not the only one in this network, and I am joining using someone elses address-> "helper"
 		system.Println("Contacting node in network at address", helper)
 		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: node.Nodeid}, helper)
@@ -153,9 +164,6 @@ func (node *Node) createFingerTable(nodeid uint64) {
 func (node *Node) stabilize() {
 	for {
 		time.Sleep(5 * time.Second)
-		if node.Successor.IP == node.IP {
-			continue
-		} // Don't need to call your own
 		reply := node.CallRPC(
 			message.RequestMessage{Type: GET_PREDECESSOR, TargetId: node.Successor.Nodeid, IP: node.Successor.IP},
 			node.Successor.IP,
@@ -215,36 +223,72 @@ func between(id, a, b uint64) bool {
 }
 
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
-	systemcommsout.Println("Sending message", msg)
+	if node.Logging {
+		systemcommsout.Println("Sending message", msg)
+	}
 	clnt, err := rpc.Dial("tcp", IP)
 	reply := message.ResponseMessage{}
 	if err != nil {
 		system.Println("Error Dialing RPC:", err)
-		systemcommsin.Println("Received reply", reply)
+		if node.Logging {
+			systemcommsin.Println("Received reply", reply)
+		}
 		return reply
 	}
 	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
 	if err != nil {
 		system.Println("Faced an error trying to call RPC:", err)
-		systemcommsin.Println("Received reply", reply)
+		if node.Logging {
+			systemcommsin.Println("Received reply", reply)
+		}
 		return reply
 	}
-	systemcommsin.Println("Received reply", reply)
+	if node.Logging {
+		systemcommsin.Println("Received reply", reply)
+	}
 	return reply
 }
 
-func (node *Node) queryDNS(website string) {
-	if strings.HasPrefix(website, "www") {
-		website = website[3:]
+func (node *Node) ShowFingers() {
+	system.Println("\n\nFINGER TABLE REQUESTED")
+	for i := 0; i < len(node.FingerTable); i++ {
+		system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
 	}
-	ips, err := net.LookupIP(website)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
-		os.Exit(1)
+}
+
+func (node *Node) QueryDNS(website string) {
+	if node.CachedQuery == nil {
+		node.CachedQuery = make(map[uint64]string)
 	}
-	for _, ip := range ips {
-		fmt.Printf("%s. IN A %s\n", website, ip.String())
+
+	if strings.HasPrefix(website, "www.") {
+		system.Println("> Removing Prefix")
+		website = website[4:]
+	}
+	hashedWebsite := utility.GenerateHash(website)
+	system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
+	ip_addr, ok := node.CachedQuery[hashedWebsite]
+	if ok {
+		system.Println("> Retrieving from Cache")
+		system.Printf("> %s. IN A %s\n", website, ip_addr)
+	} else {
+		ips, err := net.LookupIP(website)
+		if err != nil {
+			system.Printf("> Could not get IPs: %v\n", err)
+			os.Exit(1)
+		}
+		for _, ip := range ips {
+			node.CachedQuery[hashedWebsite] = ip.String()
+
+			system.Printf("> %s. IN A %s\n", website, ip.String())
+		}
 	}
 	// node.CachedQuery[website] = ip.String();
 
 }
+
+// 3001: 3129986787882157568
+// 3000: 6118645849240836096
+// 3002: 11087324024473362432
+
+// 2^64: 18,446,744,073,709,551,616
