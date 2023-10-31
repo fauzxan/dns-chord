@@ -91,6 +91,7 @@ func (node *Node) JoinNetwork(helper string) {
 		system.Println("Finger table has been updated...", node.FingerTable)
 	}
 	go node.stabilize()
+
 }
 
 // UNUSED FUNCTION
@@ -160,28 +161,35 @@ func (node *Node) stabilize() {
 			node.Successor.IP,
 		)
 		sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
-		if (sucessorsPredecessor != Pointer{}) { // Only execute this block if the successorsPredecessor is not nil
-			if belongsTo(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
+		if (sucessorsPredecessor != Pointer{}) { // Only execute this block if the successorsPredecessor  is not nil
+			if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
 				node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 			}
-			reply = node.CallRPC(
-				message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
-				node.Successor.IP,
-			)
-			if reply.Type == ACK {
-				system.Println("Successfully notified successor of it's new predecessor")
-			}
+		}
+
+		reply = node.CallRPC(
+			message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
+			node.Successor.IP,
+		)
+		if reply.Type == ACK {
+			system.Println("Successfully notified successor of it's new predecessor")
 		}
 	}
-
 }
 
 func (node *Node) Notify(x Pointer) bool {
 
-	if (node.Predecessor == Pointer{} || belongsTo(x.Nodeid, node.Predecessor.Nodeid, node.Nodeid)) {
+	if (node.Predecessor == Pointer{} || between(x.Nodeid, node.Predecessor.Nodeid, node.Nodeid)) {
 		node.Predecessor = Pointer{Nodeid: x.Nodeid, IP: x.IP}
 	}
 	return true
+}
+
+func (node *Node) CheckPredecessor() {
+	for {
+		time.Sleep(5 * time.Second)
+		system.Println("My predecessor is", node.Predecessor)
+	}
 }
 
 /*
@@ -199,6 +207,11 @@ func belongsTo(id, a, b uint64) bool {
 		return a < id && id <= b
 	}
 	return a < id || id <= b
+}
+
+// To check if an ID is in a given range (a, b).
+func between(id, a, b uint64) bool {
+	return a < b && id > a && id < b
 }
 
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
@@ -221,6 +234,9 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 }
 
 func (node *Node) queryDNS(website string) {
+	if strings.HasPrefix(website, "www") {
+		website = website[3:]
+	}
 	ips, err := net.LookupIP(website)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
