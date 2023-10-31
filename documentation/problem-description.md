@@ -1,72 +1,91 @@
 This section will briefly discuss about the key features that are involved in chord and DNS systems, and also walk through the features that will be implemented in this project.
 
-# Problem description
+# 1. Problem description
+One of the essential features of the modern Internet is the domain name system (DNS), which is a
+naming system that associates human-readable domain names to their corresponding numerical IP
+addresses. However, traditional DNS architecture may have various performance inefficiencies and
+vulnerabilities regarding security and outages. DNS implements a hierarchical structure, which can
+serve requests from clients either recursively or iteratively. The lookup times associated with such a
+system tend to be variable depending on potential caching, and the amount of load each level needs to
+take on is highly unequal, leading to problems associated with centralization. For instance, the TLDs
+and upper-level servers can become a single point of failure and make it susceptible to DDoS attacks.
 
-## Overall description
+# 2. Role of Distributed Systems in tackling this issue
 
-Traditional DNS architecture is inefficient and vulnerable and can lead to performance degradation, outages, and security vulnerabilities.
+A distributed indexing system based on Chord would mitigate the issue of load balancing in DNS
+architectures if nodes in a distributed system can effectively look up domains without having to query
+vertically between different levels.
 
-Traditional DNS uses a hierarchical structure, which serves requests from clients recursively or iteratively. The lookup times associated with such a system tend to be variable depending on potential caching. Also, the amount of load each level needs to take on is highly unequal. Moreover, the TLDs and upper-level servers are susceptible to DDoS attacks and prove to be a single point of failure.
-Role of distributed systems in solving this issue
-A distributed indexing system based on Chord would mitigate the issue of load balancing in DNS architectures if nodes in a distributed system can effectively look up domains without having to query vertically between different levels. The following properties of such a distributed indexing system built on Chord can be capitalized on:
-- Resilience to single point of failure.
+The following properties of such a distributed indexing system built on Chord can be capitalized on:
+- Resilience to a single point of failure.
 - Seamless node joins and departures.
 - Scalable performance and faster lookup times.
 - Elimination of hierarchy for decentralization improves load balancing.
 
-In this project, we propose implementing **a chord-based domain query system that helps transition from a traditional DNS architecture to a distributed system** with the aforementioned benefits. 
+In this project, we propose implementing a chord-based domain query system that helps transition
+from a traditional DNS architecture to a distributed system with the aforementioned benefits.
 
-## Key features planned
+# 3. Key features
 
 At its core, our project will aim to deliver the following features of the chord protocol:
-- Lookup of domains that return the correct domain-IP mapping using any node in a distributed system.
-- Account for failed nodes or new nodes in the system.
-- Porting over of DNS records from DNS servers to a chord network. 
-- <Add more>
+- **Correctness**: Lookup of domains that return the correct domain-IP mapping using any node in a distributed system.
+- **Availability and Fault Tolerance**: Account for failed nodes or new nodes in the system.
+- **Porting over of DNS records** from DNS servers to a chord network.
+- **Scalability**: It should efficiently provide mapping efficiently given a large number of domain-IP pairs in the hash table.
+- **Decentralized**: Fully distributed with no one node more important than the other
+
+# 4. Implementation plan
+In this project, we will be implementing the Chord protocol as described in this paper. We will be
+using the ‘Go’ Programming Language in our implementation of the protocol.
+The protocol described in the paper will be completely implemented from scratch using the help of a
+few packages that are part of the ‘Go’ Language Package Suite like the following:
+
+- **Net Package**: The Net Package will be useful to interface with TCP/IP Sockets and DNS lookups in the Application.
+- **Crypto Package**: The Crypto Package allows us to use the built-in SHA1 package for achieving consistent hashing as part of the Chord Protocol.
+- **Cobra Package**: The Cobra Package will allow us to build a clean and modern command line interface that will help us log the changes in the network.
+
+The functionality from these packages will be used to achieve a functional/working version of the
+chord protocol.
+
+# 5. Validation plan
+
+As described above, our tool is a means to transition from the issues-ridden legacy DNS to the faster,
+decentralized, and more fault-tolerant Chord-based DNS architecture. Validation for this system can
+translate into 2 use cases:
+
+## 5.1 Application use cases
+- **DNS Lookup**: Demonstrate the ability of our system to effectively lookup domain-IP mappings.
+If the domain name resides on the Chord network, the lookup call will fetch the DNS record from
+the network. If it doesn’t exist on the network yet, a lookup will be performed on the legacy
+DNS servers. Subsequently, the record will be inserted with its own key into the Chord network.
+- **Node joins and departures**: Simulate scenarios where new nodes (Chord network participants)
+join, or nodes leave (either voluntarily or due to failure). Showcase how our system can dynamically
+adapt to such changes and maintain its functionality and correctness.
 
 
+## 5.2 Testing
+- **Unit testing**: To develop unit tests for different components of our Chord network. These tests
+will account for scenarios such as lookups, nodes joining as well and handling failures.
+- **Integration testing**: To develop system tests to ensure various components work together without
+failing. Deal with edge cases that arise due to the integration of different components. For
+example, the DNS record lookup function should work seamlessly even after the departure of
+nodes from the network.
 
+## 5.3 Simulation of Distributed Nodes
+We will use separate computers to act as nodes to participate in the network.
+- Simulate 3-5 nodes on a network residing on the Local Area Network (LAN). Perform functions
+to demonstrate the use cases mentioned above. Use Terminal logs to show the correctness of the
+functions.
+- Make DNS requests for new records. Demonstrate how a call to the legacy DNS servers is followed
+by inserting the record into the Chord network. Demonstrate that future lookups for the same
+DNS record are routed to the Chord network.
+- Simulate a node leaving due to voluntary departure. Demonstrate that the DNS record previously
+hosted by this node still exists in the Chord network.
+- Simulate a node joining the network. Demonstrate load balancing of DNS records; some records
+are shifted from the original node to the new node.
 
-
-
-
-
-
-
-
-
-
-
-<!--
-# Ignore after this line
-
-
-
-## Overview of chord
-Chord is a dsitributed lookup protocol that stores a distributed hash table. Each node stores two types of key-value mappings:
-1. **key-node mapping:** if the hash of the query is not directly present in the node, the node will find out the location of the node that contains that particular key.
-2. **key-value mapping:** if the hash of the query is present in the node.
-
-In steady state, each node stores at most O(log n) other nodes. However, there is a caveat in terms of performance when it comes to maintaining nodes that contain out-of-date information -> because it will be hard to maintain the consistency of the O(log n) state. 
-
-### Properties of chord protocol:
-Chord provides a distributed computiation of hash function. 
-1. Chord assigns keys to nodes, by making use of **consistent hashing**.
-2. **All nodes receive roughly the same number of keys**- this is a property of consistent hashing. This allows for effective load balancing. A given node will only receive the same number of queries as any other node over a long enough period of time. (We assume that no node contains keys that are more popular than the others)
-3. **A given node doesn't contain routing information about all other nodes**. It only contains a small subset of this information; namely O(log n).
-
-## Consistent hashing
-We maintain an m-bit identifier for the following:
-1. The nodes. This is obtained by hashing the nodes IP address. 
-2. The keys that the nodes store. This is obtained by hashing the data.
-
-Key k is assigned to the first node, whose identifier is the same as k's identifier, or its immediate successor node. (Denoted as successor(k)).
-As an example, if a key has a hash value of 10, then it will either be assigned to the node, whose identifier is also 10, or the next node closest to the value of 10.
-
-When a node joins the network, some of the keys that were previously assigned to the successor node n, will now be assigned to node n.
-Similarly, when a node leaves the network, some of the keys that were previously assigned to it, will now be assigned to the successor of n. 
-
-## Scalable lookup
-One way to find a node that contains a given key is to hop from current node to successor node until you find the identifier of the node that is larger than the identifier
-
---!>
+If time permits, we may explore:
+- The use of scripts to spin up docker containers and simulate these virtual nodes performing the
+various functions.
+- A visual depiction of nodes joining and leaving and the DNS records that reside on each participating
+node.
