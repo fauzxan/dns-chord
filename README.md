@@ -9,7 +9,7 @@ Implementing DNS functionality using chord framework
 To run locally, open number of terminals = number of nodes you want in the network. Then you need to run the following command:
 
 ```shell
-go build && ./core -p <own port number | required> -u <some port number | optional>
+go build && ./core -p <own port number | required> -u <full ip address of the node that you are joining | required if you are joining existing network>
 ```
 #### Parameters:
 ##### -p
