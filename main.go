@@ -37,9 +37,9 @@ func main() {
 	}
 
 	var IPADDRESS = os.Getenv("IPADDRESS")
-
+	helper := ""
 	var port string
-	var joinerPort string
+	// var joinerPort string
 	for i, arg := range os.Args {
 		if arg == "-p" {
 			if i+1 > len(os.Args) {
@@ -51,8 +51,9 @@ func main() {
 			if i+1 > len(os.Args) {
 				panic("Enter a valid port number that you are going to use!!")
 			}
-			system.Println("Client to join using has port number", os.Args[i+1])
-			joinerPort = ":" + os.Args[i+1]
+			system.Println("Client to join using has address", os.Args[i+1])
+			// joinerPort = ":" + os.Args[i+1]
+			helper = os.Args[i+1]
 		}
 	}
 
@@ -78,7 +79,8 @@ func main() {
 	system.Println("Node is runnning at IP address:", tcpAddr)
 	go rpc.Accept(inbound)
 
-	me.JoinNetwork(IPADDRESS + joinerPort)
+	// me.JoinNetwork(IPADDRESS + joinerPort)
+	me.JoinNetwork(helper)
 
 	showmenu()
 	// Keep the parent thread alive

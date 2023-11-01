@@ -229,6 +229,9 @@ a new predecessor in notify.
 func (node *Node) CheckPredecessor() {
 	for {
 		time.Sleep(5 * time.Second)
+		if (node.Predecessor == Pointer{}) {
+			continue
+		}
 		reply := node.CallRPC(message.RequestMessage{Type: PING}, node.Predecessor.IP)
 		if (reply == message.ResponseMessage{}) {
 			node.Predecessor = Pointer{}
