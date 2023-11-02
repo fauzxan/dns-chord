@@ -107,12 +107,11 @@ func (node *Node) JoinNetwork(helper string) {
 	at that ID
 */
 func (node *Node) FindSuccessor(id uint64) Pointer {
-
 	if belongsTo(id, node.Nodeid, node.Successor.Nodeid) {
 		return Pointer{Nodeid: node.Successor.Nodeid, IP: node.Successor.IP} // Case when this is the first node.
 	}
 	p := node.ClosestPrecedingNode(id)
-	if p.Nodeid != node.Nodeid {
+	if (p != Pointer{} && p.Nodeid != node.Nodeid) {
 		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: id}, p.IP)
 		return Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 	} else {
@@ -176,19 +175,25 @@ func (node *Node) stabilize() {
 			node.Successor.IP,
 		)
 		sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
-		if (sucessorsPredecessor != Pointer{}) { // Only execute this block if the successorsPredecessor  is not nil
+		if (sucessorsPredecessor != Pointer{}) {
+			// The new dude in between you and your successor is not dead, then my true successor is the new dude. Or you're the only dude.
 			if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
 				node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 			}
+		} else {
+			node.Successor = node.FindSuccessor(node.Nodeid)
+			if (node.Successor == Pointer{}) {
+				node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
+			}
 		}
 		if node.Nodeid != node.Successor.Nodeid {
-			reply = node.CallRPC(
+			reply := node.CallRPC(
 				message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
 				node.Successor.IP,
 			)
-		}
-		if reply.Type == ACK {
-			system.Println("Successfully notified successor of it's new predecessor")
+			if reply.Type == ACK {
+				system.Println("Successfully notified successor of it's new predecessor")
+			}
 		}
 	}
 }
@@ -197,11 +202,11 @@ func (node *Node) stabilize() {
 	x thinks it might be nodes predecessor
 */
 func (node *Node) Notify(x Pointer) bool {
-
 	if (node.Predecessor == Pointer{} || between(x.Nodeid, node.Predecessor.Nodeid, node.Nodeid)) {
 		node.Predecessor = Pointer{Nodeid: x.Nodeid, IP: x.IP}
+		return true
 	}
-	return true
+	return false
 }
 
 /*
@@ -213,6 +218,7 @@ func (node *Node) CheckPredecessor() {
 	for {
 		time.Sleep(5 * time.Second)
 		if (node.Predecessor == Pointer{}) {continue}
+		system.Println("I came")
 		reply := node.CallRPC(message.RequestMessage{Type: PING}, node.Predecessor.IP)
 		if (reply == message.ResponseMessage{}){
 			node.Predecessor = Pointer{}
@@ -235,8 +241,9 @@ func belongsTo(id, a, b uint64) bool {
 	}
 	if a < b {
 		return a < id && id <= b
-	} 
-	return a < id || id <= b
+	} else {
+		return a < id || id <= b
+	}
 }
 
 // Node utility function to check if an ID is in a given range (a, b).
@@ -244,7 +251,11 @@ func between(id, a, b uint64) bool {
 	if a == b {
 		return true
 	}
-	return a < b && id > a && id < b
+	if a < b {
+		return a < id && id < b
+	} else {
+		return a < id || id < b
+	}
 }
 
 //  Node utility function to call RPC given a request message, and a destination IP address
@@ -282,3 +293,12 @@ func (node *Node) PrintSuccessor() {
 func (node *Node) PrintPredecessor() {
 	system.Println(node.Predecessor)
 }
+
+
+/*
+3002: 73637888
+3000: 1584076800
+3001: 1935787520
+3003: 4250431488
+
+*/
