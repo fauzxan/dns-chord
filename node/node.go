@@ -22,7 +22,10 @@ type Pointer struct {
 	Nodeid uint64 // ID of the pointed Node
 	IP     string // IP of the pointed Node
 }
-
+type Cache struct {
+	value   []string
+	counter uint64
+}
 type Node struct {
 	Nodeid        uint64              // ID of the node
 	IP            string              // localhost or IP address AND port number. Can be set through environment variables.
@@ -30,12 +33,14 @@ type Node struct {
 	Successor     Pointer             // Nodeid of it's direct successor.
 	Predecessor   Pointer             // Nodeid of it's direct predecessor.
 	Logging       bool                // logging for messages
-	CachedQuery   map[uint64][]string // caching queries on the node locally
+	CachedQuery   map[uint64]Cache    // caching queries on the node locally
 	HashIPStorage map[uint64][]string // storage for hashed ips associated with the node
+	Counter       uint64
 }
 
 // Constants
 const M = 32
+const CACHE_SIZE = 5
 
 // Message types
 const PING = "ping"
@@ -314,8 +319,9 @@ func (node *Node) PrintPredecessor() {
 
 func (node *Node) QueryDNS(website string) {
 	if node.CachedQuery == nil {
-		node.CachedQuery = make(map[uint64][]string)
+		node.CachedQuery = make(map[uint64]Cache)
 	}
+	node.Counter += 1
 
 	if strings.HasPrefix(website, "www.") {
 		system.Println("> Removing Prefix")
@@ -328,7 +334,7 @@ func (node *Node) QueryDNS(website string) {
 	ip_addr, ok := node.CachedQuery[hashedWebsite]
 	if ok {
 		system.Println("> Retrieving from Cache")
-		for _, ip_c := range ip_addr {
+		for _, ip_c := range ip_addr.value {
 			system.Printf("> %s. IN A %s\n", website, ip_c)
 		}
 	} else {
@@ -337,11 +343,30 @@ func (node *Node) QueryDNS(website string) {
 			system.Printf("> Could not get IPs: %v\n", err)
 			os.Exit(1)
 		}
+		ip_addresses := []string{}
 		for _, ip := range ips {
-			node.CachedQuery[hashedWebsite] = append(node.CachedQuery[hashedWebsite], ip.String())
-
+			ip_addresses = append(ip_addresses, ip.String())
 			system.Printf("> %s. IN A %s\n", website, ip.String())
 		}
+		node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
+		if len(node.CachedQuery) > CACHE_SIZE {
+			var minKey uint64
+			minValue := uint64(18446744073709551615)
+			for key, value := range node.CachedQuery {
+				if value.counter < minValue {
+					minKey = key
+					minValue = value.counter
+				}
+			}
+			if minKey != 0 {
+				delete(node.CachedQuery, minKey)
+			}
+
+		}
+		for key, value := range node.CachedQuery {
+			system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
+		}
+
 	}
 	// node.CachedQuery[website] = ip.String();
 
