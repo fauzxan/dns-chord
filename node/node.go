@@ -24,13 +24,14 @@ type Pointer struct {
 }
 
 type Node struct {
-	Nodeid      uint64    // ID of the node
-	IP          string    // localhost or IP address AND port number. Can be set through environment variables.
-	FingerTable []Pointer // id mapping to ip address
-	Successor   Pointer   // Nodeid of it's direct successor.
-	Predecessor Pointer   // Nodeid of it's direct predecessor.
-	Logging     bool      //logging for messages
-	CachedQuery map[uint64]string
+	Nodeid        uint64              // ID of the node
+	IP            string              // localhost or IP address AND port number. Can be set through environment variables.
+	FingerTable   []Pointer           // id mapping to ip address
+	Successor     Pointer             // Nodeid of it's direct successor.
+	Predecessor   Pointer             // Nodeid of it's direct predecessor.
+	Logging       bool                // logging for messages
+	CachedQuery   map[uint64][]string // caching queries on the node locally
+	HashIPStorage map[uint64][]string // storage for hashed ips associated with the node
 }
 
 // Constants
@@ -43,6 +44,8 @@ const FIND_SUCCESSOR = "find_successor"
 const CLOSEST_PRECEDING_NODE = "closest_preceding_node"
 const GET_PREDECESSOR = "get_predecessor"
 const NOTIFY = "notify"
+const PUT = "put"
+const GET = "get"
 
 /*
 The default method called by all RPCs. This method receives different
@@ -311,7 +314,7 @@ func (node *Node) PrintPredecessor() {
 
 func (node *Node) QueryDNS(website string) {
 	if node.CachedQuery == nil {
-		node.CachedQuery = make(map[uint64]string)
+		node.CachedQuery = make(map[uint64][]string)
 	}
 
 	if strings.HasPrefix(website, "www.") {
@@ -320,10 +323,14 @@ func (node *Node) QueryDNS(website string) {
 	}
 	hashedWebsite := utility.GenerateHash(website)
 	system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
+	succPointer := node.FindSuccessor(hashedWebsite)
+	system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
 	ip_addr, ok := node.CachedQuery[hashedWebsite]
 	if ok {
 		system.Println("> Retrieving from Cache")
-		system.Printf("> %s. IN A %s\n", website, ip_addr)
+		for _, ip_c := range ip_addr {
+			system.Printf("> %s. IN A %s\n", website, ip_c)
+		}
 	} else {
 		ips, err := net.LookupIP(website)
 		if err != nil {
@@ -331,12 +338,16 @@ func (node *Node) QueryDNS(website string) {
 			os.Exit(1)
 		}
 		for _, ip := range ips {
-			node.CachedQuery[hashedWebsite] = ip.String()
+			node.CachedQuery[hashedWebsite] = append(node.CachedQuery[hashedWebsite], ip.String())
 
 			system.Printf("> %s. IN A %s\n", website, ip.String())
 		}
 	}
 	// node.CachedQuery[website] = ip.String();
+
+}
+
+func (node *Node) Put(hashedid uint64, ipvals []string) {
 
 }
 
