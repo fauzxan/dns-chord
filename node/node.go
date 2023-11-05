@@ -1,3 +1,12 @@
+/*
+	The provided codebase implements a simplified Chord protocol, a decentralized peer-to-peer (P2P) distributed hash table (DHT) 
+	for distributed data storage and lookup. The system orchestrates nodes forming a ring-based network structure where each node 
+	maintains information about its successor, predecessor, and a portion of the network keyspace. It includes functionalities for 
+	node joining, stabilizing the network, and updating finger tables, enabling efficient decentralized lookup of key-value pairs 
+	across a distributed system where each node manages a segment of the overall keyspace. The implementation involves periodic 
+	checks, such as node stabilization, finger table fixing, predecessor checks, and message handling for essential network operations 
+	like finding successors and notifying or updating neighboring nodes.
+*/
 package node
 
 import (
@@ -27,10 +36,7 @@ type Node struct {
 	Predecessor Pointer   // Nodeid of it's direct predecessor.
 }
 
-// Constants
 const M = 32
-
-// Message types
 const PING = "ping"
 const ACK = "ack"
 const FIND_SUCCESSOR = "find_successor"
