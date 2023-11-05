@@ -2,13 +2,16 @@ package main
 
 import (
 	"bufio"
-	"core/node"
 	"fmt"
 	"net"
 	"net/rpc"
 	"os"
 	"strings"
 	"time"
+
+	"core.com/utility"
+
+	"core.com/node"
 
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
@@ -40,7 +43,7 @@ func main() {
 	var helperIp string
 
 	// Read your own port number and also the IP address of the other node, if new network
-	myIpAddress := GetOutboundIP().String()
+	myIpAddress := utility.GetOutboundIP().String()
 	reader := bufio.NewReader(os.Stdin)
 	// read input from user
 	system.Print("Enter your port number:")
@@ -60,7 +63,7 @@ func main() {
 	var addr = myIpAddress + ":" + port
 	system.Println(addr)
 	me.IP = addr[:len(addr)-1]
-	me.Nodeid = GenerateHash(addr)
+	me.Nodeid = utility.GenerateHash(addr)
 	system.Println("My id is:", me.Nodeid)
 
 	// Bind yourself to a port and listen to it

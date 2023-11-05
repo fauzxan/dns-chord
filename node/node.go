@@ -10,10 +10,14 @@ like finding successors and notifying or updating neighboring nodes.
 package node
 
 import (
-	"core/message"
 	"math"
+	"net"
+	"os"
 	"strings"
 	"time"
+
+	"core.com/message"
+	"core.com/utility"
 
 	"github.com/fatih/color"
 )
@@ -258,4 +262,59 @@ func (node *Node) CheckPredecessor() {
 			system.Println("Predecessor", node.Predecessor.IP, "is alive")
 		}
 	}
+}
+
+func (node *Node) QueryDNS(website string) {
+	if node.CachedQuery == nil {
+		node.CachedQuery = make(map[uint64]Cache)
+	}
+	node.Counter += 1
+
+	if strings.HasPrefix(website, "www.") {
+		system.Println("> Removing Prefix")
+		website = website[4:]
+	}
+	hashedWebsite := utility.GenerateHash(website)
+	system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
+	succPointer := node.FindSuccessor(hashedWebsite)
+	system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
+	ip_addr, ok := node.CachedQuery[hashedWebsite]
+	if ok {
+		system.Println("> Retrieving from Cache")
+		for _, ip_c := range ip_addr.value {
+			system.Printf("> %s. IN A %s\n", website, ip_c)
+		}
+	} else {
+		ips, err := net.LookupIP(website)
+		if err != nil {
+			system.Printf("> Could not get IPs: %v\n", err)
+			os.Exit(1)
+		}
+		ip_addresses := []string{}
+		for _, ip := range ips {
+			ip_addresses = append(ip_addresses, ip.String())
+			system.Printf("> %s. IN A %s\n", website, ip.String())
+		}
+		node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
+		if len(node.CachedQuery) > CACHE_SIZE {
+			var minKey uint64
+			minValue := uint64(18446744073709551615)
+			for key, value := range node.CachedQuery {
+				if value.counter < minValue {
+					minKey = key
+					minValue = value.counter
+				}
+			}
+			if minKey != 0 {
+				delete(node.CachedQuery, minKey)
+			}
+
+		}
+		for key, value := range node.CachedQuery {
+			system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
+		}
+
+	}
+	// node.CachedQuery[website] = ip.String();
+
 }
