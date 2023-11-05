@@ -1,3 +1,6 @@
+/*
+	Defines the structure for the Request and Response messages. 
+*/
 package message
 
 import (

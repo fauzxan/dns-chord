@@ -1,14 +1,23 @@
+/*
+The provided codebase implements a simplified Chord protocol, a decentralized peer-to-peer (P2P) distributed hash table (DHT)
+for distributed data storage and lookup. The system orchestrates nodes forming a ring-based network structure where each node
+maintains information about its successor, predecessor, and a portion of the network keyspace. It includes functionalities for
+node joining, stabilizing the network, and updating finger tables, enabling efficient decentralized lookup of key-value pairs
+across a distributed system where each node manages a segment of the overall keyspace. The implementation involves periodic
+checks, such as node stabilization, finger table fixing, predecessor checks, and message handling for essential network operations
+like finding successors and notifying or updating neighboring nodes.
+*/
 package node
 
 import (
-	"core/message"
-	"core/utility"
 	"math"
 	"net"
-	"net/rpc"
 	"os"
 	"strings"
 	"time"
+
+	"core.com/message"
+	"core.com/utility"
 
 	"github.com/fatih/color"
 )
@@ -133,12 +142,11 @@ node whose ID most immediately precedes id, and then invokes find successor
 at that ID
 */
 func (node *Node) FindSuccessor(id uint64) Pointer {
-
 	if belongsTo(id, node.Nodeid, node.Successor.Nodeid) {
 		return Pointer{Nodeid: node.Successor.Nodeid, IP: node.Successor.IP} // Case when this is the first node.
 	}
 	p := node.ClosestPrecedingNode(id)
-	if p.Nodeid != node.Nodeid {
+	if (p != Pointer{} && p.Nodeid != node.Nodeid) {
 		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: id}, p.IP)
 		return Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 	} else {
@@ -201,19 +209,25 @@ func (node *Node) stabilize() {
 			node.Successor.IP,
 		)
 		sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
-		if (sucessorsPredecessor != Pointer{}) { // Only execute this block if the successorsPredecessor  is not nil
+		if (sucessorsPredecessor != Pointer{}) {
+			// The new dude in between you and your successor is not dead, then my true successor is the new dude. Or you're the only dude.
 			if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
 				node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 			}
+		} else {
+			node.Successor = node.FindSuccessor(node.Nodeid)
+			if (node.Successor == Pointer{}) {
+				node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
+			}
 		}
 		if node.Nodeid != node.Successor.Nodeid {
-			reply = node.CallRPC(
+			reply := node.CallRPC(
 				message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
 				node.Successor.IP,
 			)
-		}
-		if reply.Type == ACK {
-			system.Println("Successfully notified successor of it's new predecessor")
+			if reply.Type == ACK {
+				system.Println("Successfully notified successor of it's new predecessor")
+			}
 		}
 	}
 }
@@ -222,11 +236,11 @@ func (node *Node) stabilize() {
 x thinks it might be nodes predecessor
 */
 func (node *Node) Notify(x Pointer) bool {
-
 	if (node.Predecessor == Pointer{} || between(x.Nodeid, node.Predecessor.Nodeid, node.Nodeid)) {
 		node.Predecessor = Pointer{Nodeid: x.Nodeid, IP: x.IP}
+		return true
 	}
-	return true
+	return false
 }
 
 /*
@@ -237,6 +251,10 @@ a new predecessor in notify.
 func (node *Node) CheckPredecessor() {
 	for {
 		time.Sleep(5 * time.Second)
+		if (node.Predecessor == Pointer{}) {
+			continue
+		}
+		system.Println("I came")
 		reply := node.CallRPC(message.RequestMessage{Type: PING}, node.Predecessor.IP)
 		if (reply == message.ResponseMessage{}) {
 			node.Predecessor = Pointer{}
@@ -244,77 +262,6 @@ func (node *Node) CheckPredecessor() {
 			system.Println("Predecessor", node.Predecessor.IP, "is alive")
 		}
 	}
-}
-
-/*
-***************************************
-		UTILITY FUNCTIONS
-***************************************
-*/
-
-// Node utility function to check if an ID is in a given range (a, b].
-func belongsTo(id, a, b uint64) bool {
-	if a == b {
-		return true
-	}
-	if a < b {
-		return a < id && id <= b
-	}
-	return a < id || id <= b
-}
-
-// Node utility function to check if an ID is in a given range (a, b).
-func between(id, a, b uint64) bool {
-	if a == b {
-		return true
-	}
-	return a < b && id > a && id < b
-}
-
-// Node utility function to call RPC given a request message, and a destination IP address
-func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
-	if node.Logging {
-		systemcommsout.Println(node.Nodeid, node.IP, "is sending message", msg, "to", IP)
-	}
-	clnt, err := rpc.Dial("tcp", IP)
-	reply := message.ResponseMessage{}
-	if err != nil {
-		system.Println("Error Dialing RPC:", err)
-		if node.Logging {
-			systemcommsin.Println("Received reply", reply)
-		}
-		return reply
-	}
-	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
-	if err != nil {
-		system.Println("Faced an error trying to call RPC:", err)
-		if node.Logging {
-			systemcommsin.Println("Received reply", reply)
-		}
-		return reply
-	}
-	if node.Logging {
-		systemcommsin.Println("Received reply", reply, "from", IP)
-	}
-	return reply
-}
-
-// Node utility function to print fingers
-func (node *Node) ShowFingers() {
-	system.Println("\n\nFINGER TABLE REQUESTED")
-	for i := 0; i < len(node.FingerTable); i++ {
-		system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
-	}
-}
-
-// Node utility function to print the successor
-func (node *Node) PrintSuccessor() {
-	system.Println(node.Successor)
-}
-
-// Node utility function to print predecessor
-func (node *Node) PrintPredecessor() {
-	system.Println(node.Predecessor)
 }
 
 func (node *Node) QueryDNS(website string) {
@@ -371,13 +318,3 @@ func (node *Node) QueryDNS(website string) {
 	// node.CachedQuery[website] = ip.String();
 
 }
-
-func (node *Node) Put(hashedid uint64, ipvals []string) {
-
-}
-
-// 3001: 3129986787882157568
-// 3000: 6118645849240836096
-// 3002: 11087324024473362432
-
-// 2^64: 18,446,744,073,709,551,616
