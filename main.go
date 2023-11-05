@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"core/node"
 	"fmt"
 	"net"
 	"net/rpc"
 	"os"
-	"strings"
 	"time"
+
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 )
@@ -34,37 +35,36 @@ func main() {
 		system.Println("Error getting env variables...")
 	}
 
-	var IPADDRESS = os.Getenv("IPADDRESS")
-	helper := ""
 	var port string
-	// var joinerPort string
-	for i, arg := range os.Args {
-		if arg == "-p" {
-			if i+1 > len(os.Args) {
-				panic("Enter a valid port number for self!!")
-			}
-			system.Println("Port number specified is", os.Args[i+1])
-			port = os.Args[i+1]
-		} else if arg == "-u" {
-			if i+1 > len(os.Args) {
-				panic("Enter a valid port number that you are going to use!!")
-			}
-			system.Println("Client to join using has address", os.Args[i+1])
-			// joinerPort = ":" + os.Args[i+1]
-			helper = os.Args[i+1]
-		}
+	var helperIp string
+
+	// Read your own port number and also the IP address of the other node, if new network
+	myIpAddress := GetOutboundIP().String() 
+	reader := bufio.NewReader(os.Stdin)
+	// read input from user
+	system.Print("Enter your port number:")
+	port, err = reader.ReadString('\n')
+	if err != nil {
+		system.Fprintln(os.Stderr, "Error reading input:", err)
+	}
+	system.Println("Enter IP address and port used to join network:")
+	// read input from user
+	helperIp, err = reader.ReadString('\n')
+	if err != nil {
+		system.Fprintln(os.Stderr, "Error reading input:", err)
 	}
 
 
 	// Create new Node object for yourself
 	me := node.Node{}
-	var addr = IPADDRESS + ":" + port
-	me.IP = addr
+	var addr = myIpAddress + ":" + port
+	system.Println(addr)
+	me.IP = addr[:len(addr) - 1]
 	me.Nodeid = GenerateHash(addr)
 	system.Println("My id is:", me.Nodeid)
 
 	// Bind yourself to a port and listen to it
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", me.IP)
 	if err != nil {
 		system.Println("Error resolving TCP address", err)
 	}
@@ -78,8 +78,8 @@ func main() {
 	system.Println("Node is runnning at IP address:", tcpAddr)
 	go rpc.Accept(inbound)
 
-	// me.JoinNetwork(IPADDRESS + joinerPort)
-	me.JoinNetwork(helper)
+	// Join the network using helperIp
+	me.JoinNetwork(helperIp[:len(helperIp) - 1])
 
 	showmenu()
 	// Keep the parent thread alive
@@ -87,17 +87,16 @@ func main() {
 		time.Sleep(1000)
 		var input string
 		fmt.Scanln(&input)
-		if (input == "1"){
-			me.ShowFingers()
-		}else if (input == "1"){
-			me.ShowFingers()
-		}else if (input == "2"){
+		switch input{
+		case "1":
+			me.PrintFingers()
+		case "2":
 			system.Println("\n\nSuccessor")
 			me.PrintSuccessor()
 			system.Println("Predecessor")
 			me.PrintPredecessor()
-		}else if (strings.ToLower(input) == "m"){
+		default:
 			showmenu()
-		} 
+		}
 	}
 }
