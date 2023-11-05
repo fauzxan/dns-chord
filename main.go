@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"core/node"
+	"core.com/node"
 	"fmt"
 	"net"
 	"net/rpc"

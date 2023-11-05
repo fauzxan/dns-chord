@@ -1,7 +1,7 @@
 package node
 
 import (
-	"core/message"
+	"core.com/message"
 	"net/rpc"
 )
 

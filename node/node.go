@@ -10,7 +10,7 @@
 package node
 
 import (
-	"core/message"
+	"core.com/message"
 	"math"
 	"strings"
 	"time"
