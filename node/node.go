@@ -10,6 +10,7 @@ like finding successors and notifying or updating neighboring nodes.
 package node
 
 import (
+	"fmt"
 	"math"
 	"net"
 	"os"
@@ -18,7 +19,6 @@ import (
 
 	"core.com/message"
 	"core.com/utility"
-
 	"github.com/fatih/color"
 )
 
@@ -310,11 +310,55 @@ func (node *Node) QueryDNS(website string) {
 			}
 
 		}
+		node.writeToStorage(hashedWebsite, ip_addresses)
 		for key, value := range node.CachedQuery {
 			system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
 		}
 
 	}
 	// node.CachedQuery[website] = ip.String();
+
+}
+
+func (node *Node) writeToStorage(hashedWebsite uint64, ip_addresses []string) {
+	filePath := "/app/data/example.txt"
+	content := fmt.Sprintf("%d : %v\n", hashedWebsite, ip_addresses)
+
+	// Write to the file, create it if it doesn't exist
+	// Append to the file or create it if it doesn't exist
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Error opening or creating the file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	// Write the content to the file
+	_, err = file.WriteString(content)
+	if err != nil {
+		fmt.Printf("Error writing to the file: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Appended to file: %s\n", filePath)
+
+	// Read the contents of the file
+	file, err = os.Open(filePath)
+	if err != nil {
+		fmt.Printf("Error opening the file for reading: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	// Read the file contents
+	buffer := make([]byte, 1024)
+	n, err := file.Read(buffer)
+	if err != nil {
+		fmt.Printf("Error reading the file: %v\n", err)
+		return
+	}
+
+	fileContents := string(buffer[:n])
+	fmt.Printf("File contents:\n%s\n", fileContents)
 
 }

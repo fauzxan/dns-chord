@@ -25,9 +25,15 @@ To run docker container, just build docker image using
     docker build --tag dns-chord-node .
 ```
 
-If successfully built, then run
+Build a docker volume called mydata
+```shell
+    docker volume create mydata
+```
+
+If successfully built, then run, as well as to bind the volume with the container, run 
 
 ```shell
-    docker run -it dns-chord-node
+    docker run -v mydata:/app/data  -it dns-chord-node
 ```
 Do note that the -it tag is important to enable interactivity and also see colored output.
+This mounts the "mydata" volume to the "/app/data" path inside the container.
