@@ -288,7 +288,7 @@ func (node *Node) QueryDNS(website string) {
 		ips, err := net.LookupIP(website)
 		if err != nil {
 			system.Printf("> Could not get IPs: %v\n", err)
-			os.Exit(1)
+			return
 		}
 		ip_addresses := []string{}
 		for _, ip := range ips {
