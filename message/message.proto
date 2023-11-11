@@ -8,6 +8,7 @@ message RequestMessage {
     string Type = 1;
     uint64  TargetId= 2;
     string IP = 3;
+    map[uint64][]string Payload = 4;
 }
 
 message ResponseMessage {

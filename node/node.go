@@ -95,6 +95,12 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		}
 		reply.Nodeid = node.Predecessor.Nodeid
 		reply.IP = node.Predecessor.IP
+	case PUT:
+		systemcommsin.Println("Recieved a message to insert a query")
+		status := node.PutQuery(msg.Payload)
+		if status {
+			reply.Type = ACK
+		}
 	default:
 		// system.Println("Client is alive and listening")
 		time.Sleep(1000)
@@ -264,6 +270,24 @@ func (node *Node) CheckPredecessor() {
 	}
 }
 
+func (node *Node) PutQuery(payload map[uint64][]string) bool {
+	//systemcommsin.Println("Recieving a request to insert values into storage")
+	for key, ip_cache := range payload {
+		node.HashIPStorage[key] = ip_cache
+	}
+
+	return true
+}
+
+func (node *Node) GetQuery(hashedId uint64) []string {
+	ip_addr, ok := node.HashIPStorage[hashedId]
+	if ok {
+		return ip_addr
+	} else {
+		return nil
+	}
+}
+
 func (node *Node) QueryDNS(website string) {
 	if node.CachedQuery == nil {
 		node.CachedQuery = make(map[uint64]Cache)
@@ -291,30 +315,36 @@ func (node *Node) QueryDNS(website string) {
 			return
 		}
 		ip_addresses := []string{}
+
 		for _, ip := range ips {
 			ip_addresses = append(ip_addresses, ip.String())
 			system.Printf("> %s. IN A %s\n", website, ip.String())
 		}
 		node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
-		if len(node.CachedQuery) > CACHE_SIZE {
-			var minKey uint64
-			minValue := uint64(18446744073709551615)
-			for key, value := range node.CachedQuery {
-				if value.counter < minValue {
-					minKey = key
-					minValue = value.counter
+		reply := node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+		system.Println(reply)
+		//system.Println(node.HashIPStorage)
+		if reply.Type == ACK {
+			if len(node.CachedQuery) > CACHE_SIZE {
+				var minKey uint64
+				minValue := uint64(18446744073709551615)
+				for key, value := range node.CachedQuery {
+					if value.counter < minValue {
+						minKey = key
+						minValue = value.counter
+					}
 				}
-			}
-			if minKey != 0 {
-				delete(node.CachedQuery, minKey)
-			}
+				if minKey != 0 {
+					delete(node.CachedQuery, minKey)
+				}
 
+			}
+			for key, value := range node.CachedQuery {
+				system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
+			}
+		} else {
+			systemcommsin.Println("Put failed")
 		}
-		node.writeToStorage(hashedWebsite, ip_addresses)
-		for key, value := range node.CachedQuery {
-			system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
-		}
-
 	}
 	// node.CachedQuery[website] = ip.String();
 
