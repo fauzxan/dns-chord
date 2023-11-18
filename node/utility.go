@@ -104,3 +104,11 @@ Node utility function to print predecessor
 func (node *Node) PrintPredecessor() {
 	system.Println(node.Predecessor)
 }
+
+func (node *Node) PrintStorage(){
+	system.Println(node.HashIPStorage)
+}
+
+func (node *Node) PrintCache(){
+	system.Println(node.CachedQuery)
+}

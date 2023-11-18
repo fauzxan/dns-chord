@@ -32,8 +32,8 @@ type Pointer struct {
 	IP     string // IP of the pointed Node
 }
 type Cache struct {
-	value   []string
-	counter uint64
+	value   []string 	// values corresponding to websites
+	counter uint64 		// 
 }
 type Node struct {
 	Nodeid        uint64              // ID of the node
@@ -41,7 +41,6 @@ type Node struct {
 	FingerTable   []Pointer           // id mapping to ip address
 	Successor     Pointer             // Nodeid of it's direct successor.
 	Predecessor   Pointer             // Nodeid of it's direct predecessor.
-	Logging       bool                // logging for messages
 	CachedQuery   map[uint64]Cache    // caching queries on the node locally
 	HashIPStorage map[uint64][]string // storage for hashed ips associated with the node
 	Counter       uint64
@@ -66,33 +65,25 @@ The default method called by all RPCs. This method receives different
 types of requests, and calls the appropriate functions.
 */
 func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *message.ResponseMessage) error {
-	if node.Logging {
-		systemcommsin.Println("Message of type", msg.Type, "received.")
-	}
+	systemcommsin.Println("Message of type", msg.Type, "received.")
 	switch msg.Type {
 	case PING:
 		systemcommsin.Println("Received ping message")
 		reply.Type = ACK
 	case FIND_SUCCESSOR:
-		if node.Logging {
-			systemcommsin.Println("Received a message to find successor of", msg.TargetId)
-		}
+		systemcommsin.Println("Received a message to find successor of", msg.TargetId)
 		pointer := node.FindSuccessor(msg.TargetId)
 		reply.Type = ACK
 		reply.Nodeid = pointer.Nodeid
 		reply.IP = pointer.IP
 	case NOTIFY:
-		if node.Logging {
-			systemcommsin.Println("Received a message to notify me about a new predecessor", msg.TargetId)
-		}
+		systemcommsin.Println("Received a message to notify me about a new predecessor", msg.TargetId)
 		status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
 		if status {
 			reply.Type = ACK
 		}
 	case GET_PREDECESSOR:
-		if node.Logging {
-			systemcommsin.Println("Received a message to get predecessor")
-		}
+		systemcommsin.Println("Received a message to get predecessor")
 		reply.Nodeid = node.Predecessor.Nodeid
 		reply.IP = node.Predecessor.IP
 	case PUT:
@@ -315,6 +306,7 @@ func (node *Node) QueryDNS(website string) {
 			return
 		}
 		ip_addresses := []string{}
+		system.Println("IP ADDRESSES", ip_addresses)
 
 		for _, ip := range ips {
 			ip_addresses = append(ip_addresses, ip.String())

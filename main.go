@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	"strings"
 	"time"
 
 	"core.com/utility"
@@ -28,6 +27,8 @@ func showmenu() {
 	system.Println("\t\tMENU")
 	system.Println("Press 1 to see the fingertable")
 	system.Println("Press 2 to see the successor and predecessor")
+	system.Println("Press 3 to see the node storage")
+	system.Println("Press 4 to see the cache")
 	system.Println("Press m to see the menu")
 	system.Println("********************************")
 }
@@ -58,12 +59,17 @@ func main() {
 		system.Fprintln(os.Stderr, "Error reading input:", err)
 	}
 
-	// Create new Node object for yourself
-	me := node.Node{}
 	var addr = myIpAddress + ":" + port
+	
+	// Create new Node object for yourself
+	me := node.Node{
+		Nodeid: utility.GenerateHash(addr),
+		IP: addr[:len(addr)-1],
+		CachedQuery: make(map[uint64]node.Cache, 69),
+		HashIPStorage: make(map[uint64][]string, 69),
+	}
+
 	system.Println(addr)
-	me.IP = addr[:len(addr)-1]
-	me.Nodeid = utility.GenerateHash(addr)
 	system.Println("My id is:", me.Nodeid)
 
 	// Bind yourself to a port and listen to it
@@ -90,20 +96,27 @@ func main() {
 		time.Sleep(1000)
 		var input string
 		fmt.Scanln(&input)
-		if input == "1" {
-			me.PrintFingers()
-		} else if strings.HasPrefix(input, "query") {
-			system.Print("Please Type the Website: ")
-			fmt.Scanln(&input)
-			me.QueryDNS(input)
-		} else if strings.ToLower(input) == "m" {
-			showmenu()
-		} else if input == "2" {
-			system.Println("\n\nSuccessor")
-			me.PrintSuccessor()
-			system.Println("Predecessor")
-			me.PrintPredecessor()
+
+		switch input{
+			case "1":
+				me.PrintFingers()
+			case "2":
+				system.Println("\n\nSuccessor")
+				me.PrintSuccessor()
+				system.Println("Predecessor")
+				me.PrintPredecessor()
+			case "3":
+				me.PrintStorage()
+			case "4":
+				me.PrintCache()
+			case "query":
+				system.Print("Please Type the Website: ")
+				fmt.Scanln(&input)
+				me.QueryDNS(input)
+			case "m":
+				showmenu()
+			default:
+				system.Println("Invalid input bro...")
 		}
 	}
-
 }
