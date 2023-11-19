@@ -59,6 +59,7 @@ const GET_PREDECESSOR = "get_predecessor"
 const NOTIFY = "notify"
 const PUT = "put"
 const GET = "get"
+const EMPTY = "empty"
 
 /*
 The default method called by all RPCs. This method receives different
@@ -72,7 +73,7 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		reply.Type = ACK
 	case FIND_SUCCESSOR:
 		systemcommsin.Println("Received a message to find successor of", msg.TargetId)
-		pointer := node.FindSuccessor(msg.TargetId)
+		pointer, _ := node.FindSuccessor(msg.TargetId, msg.HopCount)
 		reply.Type = ACK
 		reply.Nodeid = pointer.Nodeid
 		reply.IP = pointer.IP
@@ -86,6 +87,9 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		systemcommsin.Println("Received a message to get predecessor")
 		reply.Nodeid = node.Predecessor.Nodeid
 		reply.IP = node.Predecessor.IP
+	case GET:
+		systemcommsin.Println("Received a message to Get DNS record")
+		reply.QueryResponse = node.GetQuery(msg.TargetId)
 	case PUT:
 		systemcommsin.Println("Recieved a message to insert a query")
 		status := node.PutQuery(msg.Payload)
@@ -138,16 +142,18 @@ n returns its successor. Otherwise, n searches its finger table for the
 node whose ID most immediately precedes id, and then invokes find successor
 at that ID
 */
-func (node *Node) FindSuccessor(id uint64) Pointer {
+func (node *Node) FindSuccessor(id uint64, hopCount int) (Pointer, int) {
+	hopCount ++
 	if belongsTo(id, node.Nodeid, node.Successor.Nodeid) {
-		return Pointer{Nodeid: node.Successor.Nodeid, IP: node.Successor.IP} // Case when this is the first node.
+		return Pointer{Nodeid: node.Successor.Nodeid, IP: node.Successor.IP}, hopCount // Case when this is the first node.
 	}
 	p := node.ClosestPrecedingNode(id)
 	if (p != Pointer{} && p.Nodeid != node.Nodeid) {
-		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: id}, p.IP)
-		return Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
+		
+		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: id, HopCount: hopCount}, p.IP)
+		return Pointer{Nodeid: reply.Nodeid, IP: reply.IP}, hopCount
 	} else {
-		return node.Successor
+		return node.Successor, hopCount
 	}
 }
 
@@ -183,7 +189,7 @@ func (node *Node) FixFingers() {
 			if nodePlusTwoI > power {
 				nodePlusTwoI -= power
 			}
-			node.FingerTable[id] = node.FindSuccessor(uint64(nodePlusTwoI))
+			node.FingerTable[id], _ = node.FindSuccessor(uint64(nodePlusTwoI), 0)
 		}
 	}
 }
@@ -212,7 +218,7 @@ func (node *Node) stabilize() {
 				node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 			}
 		} else {
-			node.Successor = node.FindSuccessor(node.Nodeid)
+			node.Successor,_ = node.FindSuccessor(node.Nodeid, 0)
 			if (node.Successor == Pointer{}) {
 				node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
 			}
@@ -253,7 +259,7 @@ func (node *Node) CheckPredecessor() {
 		}
 		system.Println("I came")
 		reply := node.CallRPC(message.RequestMessage{Type: PING}, node.Predecessor.IP)
-		if (reply == message.ResponseMessage{}) {
+		if (reply.Type == EMPTY) {
 			node.Predecessor = Pointer{}
 		} else {
 			system.Println("Predecessor", node.Predecessor.IP, "is alive")
@@ -270,7 +276,7 @@ func (node *Node) PutQuery(payload map[uint64][]string) bool {
 	return true
 }
 
-func (node *Node) GetQuery(hashedId uint64) []string {
+func (node *Node) GetQuery(hashedId uint64) []string { // unused
 	ip_addr, ok := node.HashIPStorage[hashedId]
 	if ok {
 		return ip_addr
@@ -279,6 +285,8 @@ func (node *Node) GetQuery(hashedId uint64) []string {
 	}
 }
 
+// 1
+// 1000, 2000, 3000
 func (node *Node) QueryDNS(website string) {
 	if node.CachedQuery == nil {
 		node.CachedQuery = make(map[uint64]Cache)
@@ -290,9 +298,6 @@ func (node *Node) QueryDNS(website string) {
 		website = website[4:]
 	}
 	hashedWebsite := utility.GenerateHash(website)
-	system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
-	succPointer := node.FindSuccessor(hashedWebsite)
-	system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
 	ip_addr, ok := node.CachedQuery[hashedWebsite]
 	if ok {
 		system.Println("> Retrieving from Cache")
@@ -300,6 +305,17 @@ func (node *Node) QueryDNS(website string) {
 			system.Printf("> %s. IN A %s\n", website, ip_c)
 		}
 	} else {
+		system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
+		succPointer, hopCount := node.FindSuccessor(hashedWebsite, 0)
+		system.Println("NUMBER OF HOPS:", hopCount)
+		// log hopcount into the log file using the library
+		system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
+		msg := message.RequestMessage{Type: GET, TargetId: hashedWebsite}
+		reply := node.CallRPC(msg, succPointer.IP)
+		if reply.QueryResponse != nil{
+			system.Println("ANSWER RECEIVED FROM CHORD:", reply.QueryResponse)
+			return
+		}
 		ips, err := net.LookupIP(website)
 		if err != nil {
 			system.Printf("> Could not get IPs: %v\n", err)
@@ -313,7 +329,7 @@ func (node *Node) QueryDNS(website string) {
 			system.Printf("> %s. IN A %s\n", website, ip.String())
 		}
 		node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
-		reply := node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+		reply = node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
 		system.Println(reply)
 		//system.Println(node.HashIPStorage)
 		if reply.Type == ACK {

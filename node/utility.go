@@ -22,12 +22,14 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 	if err != nil {
 		system.Println("Error Dialing RPC:", err)
 		systemcommsin.Println("Received reply", reply)
+		reply.Type = EMPTY
 		return reply
 	}
 	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
 	if err != nil {
 		system.Println("Faced an error trying to call RPC:", err)
 		systemcommsin.Println("Received reply", reply)
+		reply.Type = EMPTY
 		return reply
 	}
 	systemcommsin.Println("Received reply", reply, "from", IP)
