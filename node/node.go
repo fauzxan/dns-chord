@@ -10,6 +10,7 @@ like finding successors and notifying or updating neighboring nodes.
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"net"
@@ -32,8 +33,8 @@ type Pointer struct {
 	IP     string // IP of the pointed Node
 }
 type Cache struct {
-	value   []string 	// values corresponding to websites
-	counter uint64 		// 
+	value   []string // values corresponding to websites
+	counter uint64   //
 }
 type Node struct {
 	Nodeid        uint64              // ID of the node
@@ -185,6 +186,8 @@ func (node *Node) FixFingers() {
 			}
 			node.FingerTable[id] = node.FindSuccessor(uint64(nodePlusTwoI))
 		}
+		node.writeToStorage(node.HashIPStorage)
+		node.readFromStorage()
 	}
 }
 
@@ -342,45 +345,75 @@ func (node *Node) QueryDNS(website string) {
 
 }
 
-func (node *Node) writeToStorage(hashedWebsite uint64, ip_addresses []string) {
-	filePath := "/app/data/example.txt"
-	content := fmt.Sprintf("%d : %v\n", hashedWebsite, ip_addresses)
+func (node *Node) writeToStorage(HashIPStorage map[uint64][]string) {
+	filePath := "/app/data/example.json"
+	// content := fmt.Sprintf("%d : %v\n", hashedWebsite, ip_addresses)
+	jsonData, err := json.Marshal(HashIPStorage)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	// Write to the file, create it if it doesn't exist
 	// Append to the file or create it if it doesn't exist
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Printf("Error opening or creating the file: %v\n", err)
 		return
 	}
-	defer file.Close()
 
 	// Write the content to the file
-	_, err = file.WriteString(content)
+	_, err = file.Write(jsonData)
 	if err != nil {
 		fmt.Printf("Error writing to the file: %v\n", err)
 		return
 	}
 
-	fmt.Printf("Appended to file: %s\n", filePath)
+	fmt.Printf("JSON data written to file: %s\n", filePath)
+	// _, err = file.Seek(0, 0)
+	// if err != nil {
+	// 	fmt.Printf("Error seeking to the beginning of the file: %v\n", err)
+	// 	return
+	// }
+	// var storage map[uint64][]string
+	// decoder := json.NewDecoder(file)
+	// err = decoder.Decode(&storage)
+	// if err != nil {
+	// 	fmt.Printf("Error decoding the JSON data: %v\n", err)
+	// 	return
+	// }
 
-	// Read the contents of the file
-	file, err = os.Open(filePath)
+	// fmt.Printf("Data read from file\n")
+	// for key, value := range storage {
+	// 	fmt.Printf("Key: %v, Value: %v\n", key, value)
+	// }
+	defer file.Close()
+}
+
+func (node *Node) readFromStorage() {
+	filePath := "/app/data/example.json"
+
+	// Open the file for reading
+	file, err := os.OpenFile(filePath, os.O_RDONLY, 0)
 	if err != nil {
 		fmt.Printf("Error opening the file for reading: %v\n", err)
 		return
 	}
 	defer file.Close()
-
-	// Read the file contents
-	buffer := make([]byte, 1024)
-	n, err := file.Read(buffer)
+	var storage map[uint64][]string
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&storage)
 	if err != nil {
-		fmt.Printf("Error reading the file: %v\n", err)
+		fmt.Printf("Error decoding the JSON data: %v\n", err)
 		return
 	}
 
-	fileContents := string(buffer[:n])
-	fmt.Printf("File contents:\n%s\n", fileContents)
+	fmt.Printf("Data read from file\n")
+	// When node crashes, node.HashIPStorage = storage
+	// node.HashIPStorage = storage
+	for key, value := range storage {
+		fmt.Printf("Key: %v, Value: %v\n", key, value)
+	}
+	defer file.Close()
 
 }
