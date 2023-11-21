@@ -144,13 +144,13 @@ node whose ID most immediately precedes id, and then invokes find successor
 at that ID
 */
 func (node *Node) FindSuccessor(id uint64, hopCount int) (Pointer, int) {
-	hopCount ++
+	hopCount++
 	if belongsTo(id, node.Nodeid, node.Successor.Nodeid) {
 		return Pointer{Nodeid: node.Successor.Nodeid, IP: node.Successor.IP}, hopCount // Case when this is the first node.
 	}
 	p := node.ClosestPrecedingNode(id)
 	if (p != Pointer{} && p.Nodeid != node.Nodeid) {
-		
+
 		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: id, HopCount: hopCount}, p.IP)
 		return Pointer{Nodeid: reply.Nodeid, IP: reply.IP}, hopCount
 	} else {
@@ -192,8 +192,13 @@ func (node *Node) FixFingers() {
 			}
 			node.FingerTable[id], _ = node.FindSuccessor(uint64(nodePlusTwoI), 0)
 		}
-		node.writeToStorage(node.HashIPStorage)
-		node.readFromStorage()
+		// it has just restarted, so it needs to read from storage
+		if len(node.HashIPStorage) == 0 {
+			node.readFromStorage()
+		}
+
+		node.writeToStorage()
+
 	}
 }
 
@@ -221,7 +226,7 @@ func (node *Node) stabilize() {
 				node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 			}
 		} else {
-			node.Successor,_ = node.FindSuccessor(node.Nodeid, 0)
+			node.Successor, _ = node.FindSuccessor(node.Nodeid, 0)
 			if (node.Successor == Pointer{}) {
 				node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
 			}
@@ -262,7 +267,7 @@ func (node *Node) CheckPredecessor() {
 		}
 		system.Println("I came")
 		reply := node.CallRPC(message.RequestMessage{Type: PING}, node.Predecessor.IP)
-		if (reply.Type == EMPTY) {
+		if reply.Type == EMPTY {
 			node.Predecessor = Pointer{}
 		} else {
 			system.Println("Predecessor", node.Predecessor.IP, "is alive")
@@ -315,7 +320,7 @@ func (node *Node) QueryDNS(website string) {
 		system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
 		msg := message.RequestMessage{Type: GET, TargetId: hashedWebsite}
 		reply := node.CallRPC(msg, succPointer.IP)
-		if reply.QueryResponse != nil{
+		if reply.QueryResponse != nil {
 			system.Println("ANSWER RECEIVED FROM CHORD:", reply.QueryResponse)
 			return
 		}
@@ -334,7 +339,8 @@ func (node *Node) QueryDNS(website string) {
 		node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
 		reply = node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
 		system.Println(reply)
-		//system.Println(node.HashIPStorage)
+		system.Println("Node HashIPStorage: ", node.HashIPStorage)
+
 		if reply.Type == ACK {
 			if len(node.CachedQuery) > CACHE_SIZE {
 				var minKey uint64
@@ -361,15 +367,17 @@ func (node *Node) QueryDNS(website string) {
 
 }
 
-func (node *Node) writeToStorage(HashIPStorage map[uint64][]string) {
-	filePath := "/app/data/example.json"
+func (node *Node) writeToStorage() {
+
+	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
 	// content := fmt.Sprintf("%d : %v\n", hashedWebsite, ip_addresses)
-	jsonData, err := json.Marshal(HashIPStorage)
+	jsonData, err := json.Marshal(node.HashIPStorage)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	fmt.Printf("JSON data: %s\n", jsonData)
 	// Write to the file, create it if it doesn't exist
 	// Append to the file or create it if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
@@ -407,7 +415,7 @@ func (node *Node) writeToStorage(HashIPStorage map[uint64][]string) {
 }
 
 func (node *Node) readFromStorage() {
-	filePath := "/app/data/example.json"
+	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
 
 	// Open the file for reading
 	file, err := os.OpenFile(filePath, os.O_RDONLY, 0)
@@ -426,10 +434,11 @@ func (node *Node) readFromStorage() {
 
 	fmt.Printf("Data read from file\n")
 	// When node crashes, node.HashIPStorage = storage
-	// node.HashIPStorage = storage
+
 	for key, value := range storage {
 		fmt.Printf("Key: %v, Value: %v\n", key, value)
 	}
+	node.HashIPStorage = storage
 	defer file.Close()
 
 }
