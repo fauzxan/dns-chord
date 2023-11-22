@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
-	"core.com/node"
 	"fmt"
 	"net"
 	"net/rpc"
 	"os"
+	"strconv"
 	"time"
+
+	"core.com/node"
 
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
@@ -35,18 +37,16 @@ func main() {
 		system.Println("Error getting env variables...")
 	}
 
-	var port string
+	// Get the some free port number
+	var port, porterr = GetFreePort()
+	if porterr != nil{
+		system.Println("Error finding new port number")
+	}
 	var helperIp string
 
 	// Read your own port number and also the IP address of the other node, if new network
 	myIpAddress := GetOutboundIP().String() 
 	reader := bufio.NewReader(os.Stdin)
-	// read input from user
-	system.Print("Enter your port number:")
-	port, err = reader.ReadString('\n')
-	if err != nil {
-		system.Fprintln(os.Stderr, "Error reading input:", err)
-	}
 	system.Println("Enter IP address and port used to join network:")
 	// read input from user
 	helperIp, err = reader.ReadString('\n')
@@ -57,9 +57,9 @@ func main() {
 
 	// Create new Node object for yourself
 	me := node.Node{}
-	var addr = myIpAddress + ":" + port
+	var addr = myIpAddress + ":" + strconv.Itoa(port)
 	system.Println(addr)
-	me.IP = addr[:len(addr) - 1]
+	me.IP = addr
 	me.Nodeid = GenerateHash(addr)
 	system.Println("My id is:", me.Nodeid)
 
@@ -72,10 +72,12 @@ func main() {
 	if err != nil {
 		system.Println("Could not listen to TCP address", err)
 	}
+	system.Println("********************************")
+	system.Println("Node is running at:", tcpAddr)
+	system.Println("********************************")
 
 	// Register RPC methods and accept incoming requests
 	rpc.Register(&me)
-	system.Println("Node is runnning at IP address:", tcpAddr)
 	go rpc.Accept(inbound)
 
 	// Join the network using helperIp
@@ -96,6 +98,7 @@ func main() {
 			system.Println("Predecessor")
 			me.PrintPredecessor()
 		default:
+			system.Println("Enter valid number")
 			showmenu()
 		}
 	}

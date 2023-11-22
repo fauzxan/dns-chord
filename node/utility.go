@@ -1,8 +1,9 @@
 package node
 
 import (
-	"core.com/message"
 	"net/rpc"
+
+	"core.com/message"
 )
 
 /*
