@@ -9,4 +9,6 @@ ADD . /app
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /core
 
+VOLUME [ "/mydata" ]
+
 CMD [ "/core" ]
