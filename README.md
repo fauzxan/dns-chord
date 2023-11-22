@@ -31,3 +31,9 @@ If successfully built, then run
     docker run -it dns-chord-node
 ```
 Do note that the -it tag is important to enable interactivity and also see colored output.
+
+If you kill the container, then to restart it simply run:
+```
+docker start -ai <container_name>
+```
+You may close the terminal, and the container will still keep running in the background. You can confirm this behaviour via the log output of the container on docker desktop. 
