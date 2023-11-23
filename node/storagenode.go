@@ -31,26 +31,26 @@ func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool 
 		node.HashIPStorage[succesorId][key] = ip_cache
 	}
 
-	//go node.replicate(payload)
+	go node.replicate(payload)
 	return true
 }
 
 /*
-replicate will be called when:
-	1. When a new query has come in (node.PutQuery)
-	2.
+replicate will be called when a new query has come in (node.PutQuery)
 */
-// func (node *Node) replicate(payload map[uint64][]string){
-// 	// find the first k="REPLICATION_FACTOR" distinct successors from node.FingerTable, and send them a PUT message, so they can put it into their storage.
-// 	replicationSuccessor := make([]string, REPLICATION_FACTOR)
-// 	replicationSuccessor = append(replicationSuccessor, node.Successor.IP)
-// 	for i:= 0; i<2; i++{
-// 		successor = node.FindSuccessor()
-// 		replicationSuccessor = append(replicationSuccessor, )
-// 	}
-// 	successor := node.FindSuccessor()
-
-// }
+func (node *Node) replicate(payload map[uint64][]string){
+	replicationSuccessor := make([]Pointer, REPLICATION_FACTOR)
+	replicationSuccessor = append(replicationSuccessor, node.Successor)
+	for i:= 0; i<REPLICATION_FACTOR-1; i++{
+		successor, _ := node.FindSuccessor(replicationSuccessor[len(replicationSuccessor)-1].Nodeid, 0)
+		replicationSuccessor = append(replicationSuccessor, successor)
+	}
+	for _, pointer := range replicationSuccessor{
+		if pointer.IP == node.IP { continue }
+		msg := message.RequestMessage{Type: REPLICATE, Payload: payload, TargetId: node.Nodeid}
+		node.CallRPC(msg, pointer.IP)
+	}
+}
 
 func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string) bool {
 	_, ok := node.HashIPStorage[senderId]
