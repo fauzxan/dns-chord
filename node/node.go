@@ -99,12 +99,16 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
 	case PUT:
 		systemcommsin.Println("Recieved a message to insert a query")
-		status := node.PutQuery(msg.PayloadId, msg.Payload)
+		status := node.PutQuery(msg.TargetId, msg.Payload)
 		if status {
 			reply.Type = ACK
 		}
 	case REPLICATE:
-		
+		systemcommsin.Println("Recieved a message to replicate data")
+		status:= node.processReplicate(msg.TargetId, msg.Payload)
+		if status {
+			reply.Type = ACK
+		}
 	default:
 		// system.Println("Client is alive and listening")
 		time.Sleep(1000)

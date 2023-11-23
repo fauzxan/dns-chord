@@ -13,7 +13,6 @@ type RequestMessage struct {
 	TargetId uint64 // ID of the parameter node passed to the destination
 	IP       string // IP of the parameter node passed to the destination
 	Payload  map[uint64][]string
-	PayloadId uint64
 	HopCount int
 }
 
