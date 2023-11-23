@@ -105,10 +105,14 @@ func (node *Node) PrintPredecessor() {
 	system.Println(node.Predecessor)
 }
 
-func (node *Node) PrintStorage(){
+func (node *Node) PrintStorage() {
+	system.Println("\n\nSTORAGE TABLE REQUESTED")
 	system.Println(node.HashIPStorage)
 }
 
-func (node *Node) PrintCache(){
-	system.Println(node.CachedQuery)
+func (node *Node) PrintCache() {
+	system.Println("\n\nCACHE TABLE REQUESTED")
+	for id, cache := range node.CachedQuery {
+		system.Printf(">%d %s\n", id, cache.value)
+	}
 }
