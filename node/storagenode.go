@@ -21,27 +21,27 @@ Upon receiving a PUT message, or signal, it will simply
  1. Put the entry into local storage
  2. Call node.replicate(payload)
 */
-func (node *Node) PutQuery(succesorid uint64, payload map[uint64][]string) bool {
+func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool {
 	//systemcommsin.Println("Recieving a request to insert values into storage")
-	_, ok := node.HashIPStorage[succesorid]
+	_, ok := node.HashIPStorage[succesorId]
 	if !ok {
-		node.HashIPStorage[succesorid] = map[uint64][]string{}
+		node.HashIPStorage[succesorId] = map[uint64][]string{}
 	}
 	for key, ip_cache := range payload {
-		node.HashIPStorage[succesorid][key] = ip_cache
+		node.HashIPStorage[succesorId][key] = ip_cache
 	}
 
-	go node.replicate(payload)
+	//go node.replicate(payload)
 	return true
 }
 
 /*
 replicate will be called when:
 	1. When a new query has come in (node.PutQuery)
-	2. 
+	2.
 */
 // func (node *Node) replicate(payload map[uint64][]string){
-// 	// find the first k="REPLICATION_FACTOR" distinct successors from node.FingerTable, and send them a PUT message, so they can put it into their storage. 
+// 	// find the first k="REPLICATION_FACTOR" distinct successors from node.FingerTable, and send them a PUT message, so they can put it into their storage.
 // 	replicationSuccessor := make([]string, REPLICATION_FACTOR)
 // 	replicationSuccessor = append(replicationSuccessor, node.Successor.IP)
 // 	for i:= 0; i<2; i++{
@@ -49,14 +49,19 @@ replicate will be called when:
 // 		replicationSuccessor = append(replicationSuccessor, )
 // 	}
 // 	successor := node.FindSuccessor()
-	
+
 // }
 
-func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string){
+func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string) bool {
 	_, ok := node.HashIPStorage[senderId]
 	if !ok {
-		node.HashIPStorage[senderId] = pay
+		node.HashIPStorage[senderId] = map[uint64][]string{}
 	}
+
+	for key, ip_cache := range payload {
+		node.HashIPStorage[senderId][key] = ip_cache
+	}
+	return true
 }
 
 func (node *Node) GetQuery(hashedId uint64) []string { // unused
@@ -119,7 +124,7 @@ func (node *Node) QueryDNS(website string) {
 					system.Printf("> %s. IN A %s\n", website, ip.String())
 				}
 				node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
-				reply = node.CallRPC(message.RequestMessage{Type: PUT, PayloadId: succPointer.Nodeid, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+				reply = node.CallRPC(message.RequestMessage{Type: PUT, TargetId: succPointer.Nodeid, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
 
 				if reply.Type == ACK {
 					if len(node.CachedQuery) > CACHE_SIZE {
