@@ -38,20 +38,25 @@ func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool 
 /*
 replicate will be called when a new query has come in (node.PutQuery)
 */
-func (node *Node) replicate(payload map[uint64][]string){
+func (node *Node) replicate(payload map[uint64][]string) {
 	replicationSuccessor := make([]Pointer, REPLICATION_FACTOR)
 	replicationSuccessor = append(replicationSuccessor, node.Successor)
-	for i:= 0; i<REPLICATION_FACTOR-1; i++{
+	for i := 0; i < REPLICATION_FACTOR-1; i++ {
 		successor, _ := node.FindSuccessor(replicationSuccessor[len(replicationSuccessor)-1].Nodeid, 0)
 		replicationSuccessor = append(replicationSuccessor, successor)
 	}
-	for _, pointer := range replicationSuccessor{
-		if pointer.IP == node.IP { continue }
+	for _, pointer := range replicationSuccessor {
+		if pointer.IP == node.IP {
+			continue
+		}
 		msg := message.RequestMessage{Type: REPLICATE, Payload: payload, TargetId: node.Nodeid}
 		node.CallRPC(msg, pointer.IP)
 	}
 }
 
+/*
+Process Replicate will be called when a new REPLICATE message arrives
+*/
 func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string) bool {
 	_, ok := node.HashIPStorage[senderId]
 	if !ok {
