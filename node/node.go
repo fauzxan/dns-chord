@@ -110,12 +110,12 @@ chord network, or joins an existing chord network accordingly.
 */
 func (node *Node) JoinNetwork(helper string) {
 	if len(strings.Split(helper, ":")) == 1 { // I am the only node in this network
-		system.Println("I am creating a new network...")
+		system.Println("> I am creating a new network...")
 		node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
 		node.Predecessor = Pointer{}
 		node.FingerTable = make([]Pointer, M)
 		go node.FixFingers()
-		system.Println("Finger table has been updated...")
+		system.Println("> Finger table has been updated...")
 		for i := 0; i < len(node.FingerTable); i++ {
 			system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
 		}
@@ -127,7 +127,7 @@ func (node *Node) JoinNetwork(helper string) {
 		node.Predecessor = Pointer{}
 		node.FingerTable = make([]Pointer, M)
 		go node.FixFingers()
-		system.Println("Finger table has been updated...")
+		system.Println("> Finger table has been updated...")
 		for i := 0; i < len(node.FingerTable); i++ {
 			system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
 		}
@@ -169,7 +169,7 @@ func (node *Node) ClosestPrecedingNode(id uint64) Pointer {
 			return node.FingerTable[i]
 		}
 	}
-	system.Println("Closes Preceding node outside fingertable:", Pointer{Nodeid: node.Nodeid, IP: node.IP})
+	system.Println("> Closest Preceding node outside fingertable:", Pointer{Nodeid: node.Nodeid, IP: node.IP})
 	return Pointer{Nodeid: node.Nodeid, IP: node.IP}
 }
 
@@ -183,7 +183,7 @@ func (node *Node) FixFingers() {
 
 	for {
 		time.Sleep(5 * time.Second)
-		system.Println("Fixing fingers...")
+		system.Println("> Fixing fingers...")
 		for id := range node.FingerTable {
 			nodePlusTwoI := (node.Nodeid + uint64(math.Pow(2, float64(id))))
 			power := uint64(math.Pow(2, float64(M)))
@@ -265,7 +265,7 @@ func (node *Node) CheckPredecessor() {
 		if (node.Predecessor == Pointer{}) {
 			continue
 		}
-		system.Println("I came")
+		//system.Println("I came")
 		reply := node.CallRPC(message.RequestMessage{Type: PING}, node.Predecessor.IP)
 		if reply.Type == EMPTY {
 			node.Predecessor = Pointer{}
@@ -313,55 +313,67 @@ func (node *Node) QueryDNS(website string) {
 			system.Printf("> %s. IN A %s\n", website, ip_c)
 		}
 	} else {
+		ip_addr, ok := node.HashIPStorage[hashedWebsite]
 		system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
-		succPointer, hopCount := node.FindSuccessor(hashedWebsite, 0)
-		system.Println("NUMBER OF HOPS:", hopCount)
-		// log hopcount into the log file using the library
-		system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
-		msg := message.RequestMessage{Type: GET, TargetId: hashedWebsite}
-		reply := node.CallRPC(msg, succPointer.IP)
-		if reply.QueryResponse != nil {
-			system.Println("ANSWER RECEIVED FROM CHORD:", reply.QueryResponse)
-			return
-		}
-		ips, err := net.LookupIP(website)
-		if err != nil {
-			system.Printf("> Could not get IPs: %v\n", err)
-			return
-		}
-		ip_addresses := []string{}
-		system.Println("IP ADDRESSES", ip_addresses)
-
-		for _, ip := range ips {
-			ip_addresses = append(ip_addresses, ip.String())
-			system.Printf("> %s. IN A %s\n", website, ip.String())
-		}
-		node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
-		reply = node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
-		system.Println(reply)
-		system.Println("Node HashIPStorage: ", node.HashIPStorage)
-
-		if reply.Type == ACK {
-			if len(node.CachedQuery) > CACHE_SIZE {
-				var minKey uint64
-				minValue := uint64(18446744073709551615)
-				for key, value := range node.CachedQuery {
-					if value.counter < minValue {
-						minKey = key
-						minValue = value.counter
-					}
-				}
-				if minKey != 0 {
-					delete(node.CachedQuery, minKey)
-				}
-
-			}
-			for key, value := range node.CachedQuery {
-				system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
+		if ok {
+			system.Println("> Retrieving from Local Storage")
+			for _, ip_c := range ip_addr {
+				system.Printf("> %s. IN A %s\n", website, ip_c)
 			}
 		} else {
-			systemcommsin.Println("Put failed")
+			succPointer, hopCount := node.FindSuccessor(hashedWebsite, 0)
+			system.Println("> Number of Hops:", hopCount)
+			// log hopcount into the log file using the library
+			system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
+			msg := message.RequestMessage{Type: GET, TargetId: hashedWebsite}
+			reply := node.CallRPC(msg, succPointer.IP)
+			if reply.QueryResponse != nil {
+				system.Println("> Retrieving from Chord Network")
+				for _, ip_c := range reply.QueryResponse {
+					system.Printf("> %s. IN A %s\n", website, ip_c)
+				}
+			} else {
+				ips, err := net.LookupIP(website)
+				if err != nil {
+					system.Printf("> Could not get IPs: %v\n", err)
+					return
+				}
+				ip_addresses := []string{}
+				system.Println("IP ADDRESSES", ip_addresses)
+
+				for _, ip := range ips {
+					ip_addresses = append(ip_addresses, ip.String())
+					system.Printf("> %s. IN A %s\n", website, ip.String())
+				}
+				node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
+				reply = node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+				// system.Println(reply)
+				// system.Println("Node HashIPStorage: ", node.HashIPStorage)
+
+				if reply.Type == ACK {
+					if len(node.CachedQuery) > CACHE_SIZE {
+						var minKey uint64
+						minValue := uint64(18446744073709551615)
+						for key, value := range node.CachedQuery {
+							if value.counter < minValue {
+								minKey = key
+								minValue = value.counter
+							}
+						}
+						if minKey != 0 {
+							delete(node.CachedQuery, minKey)
+						}
+
+					}
+					// for key, value := range node.CachedQuery
+					// 	system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
+					// }
+				} else {
+					systemcommsin.Println("Put failed")
+				}
+			}
 		}
+
 	}
 	// node.CachedQuery[website] = ip.String();
 
@@ -376,7 +388,6 @@ func (node *Node) writeToStorage() {
 		fmt.Println(err)
 		return
 	}
-
 	fmt.Printf("JSON data: %s\n", jsonData)
 	// Write to the file, create it if it doesn't exist
 	// Append to the file or create it if it doesn't exist
@@ -433,6 +444,7 @@ func (node *Node) readFromStorage() {
 	}
 
 	fmt.Printf("Data read from file\n")
+
 	// When node crashes, node.HashIPStorage = storage
 
 	for key, value := range storage {

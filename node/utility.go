@@ -36,25 +36,6 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 	return reply
 }
 
-// func (node *Node) PutRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
-// 	systemcommsout.Println(node.Nodeid, node.IP, "is sending PUT message", "to", IP)
-// 	clnt, err := rpc.Dial("tcp", IP)
-// 	reply := message.ResponseMessage{}
-// 	if err != nil {
-// 		system.Println("Error Dialing RPC:", err)
-// 		systemcommsin.Println("Received reply", reply)
-// 		return reply
-// 	}
-// 	err = clnt.Call("Node.PutQuery", msg.Payload, &reply)
-// 	if err != nil {
-// 		system.Println("Faced an error trying to call RPC:", err)
-// 		systemcommsin.Println("Received reply", reply)
-// 		return reply
-// 	}
-// 	systemcommsin.Println("Received reply to PUT:", reply, "from", IP)
-// 	return reply
-// }
-
 /*
 Node utility function to check if an ID is in a given range (a, b].
 */

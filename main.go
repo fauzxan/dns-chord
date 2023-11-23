@@ -60,12 +60,12 @@ func main() {
 	}
 
 	var addr = myIpAddress + ":" + port
-	
+
 	// Create new Node object for yourself
 	me := node.Node{
-		Nodeid: utility.GenerateHash(addr),
-		IP: addr[:len(addr)-1],
-		CachedQuery: make(map[uint64]node.Cache, 69),
+		Nodeid:        utility.GenerateHash(addr),
+		IP:            addr[:len(addr)-1],
+		CachedQuery:   make(map[uint64]node.Cache, 69),
 		HashIPStorage: make(map[uint64][]string, 69),
 	}
 
@@ -97,26 +97,26 @@ func main() {
 		var input string
 		fmt.Scanln(&input)
 
-		switch input{
-			case "1":
-				me.PrintFingers()
-			case "2":
-				system.Println("\n\nSuccessor")
-				me.PrintSuccessor()
-				system.Println("Predecessor")
-				me.PrintPredecessor()
-			case "3":
-				me.PrintStorage()
-			case "4":
-				me.PrintCache()
-			case "query":
-				system.Print("Please Type the Website: ")
-				fmt.Scanln(&input)
-				me.QueryDNS(input)
-			case "m":
-				showmenu()
-			default:
-				system.Println("Invalid input bro...")
+		switch input {
+		case "1":
+			me.PrintFingers()
+		case "2":
+			system.Println("\n\nSuccessor")
+			me.PrintSuccessor()
+			system.Println("Predecessor")
+			me.PrintPredecessor()
+		case "3":
+			me.PrintStorage()
+		case "4":
+			me.PrintCache()
+		case "query":
+			system.Print("Please Type the Website: ")
+			fmt.Scanln(&input)
+			me.QueryDNS(input)
+		case "m":
+			showmenu()
+		default:
+			system.Println("Invalid input bro...")
 		}
 	}
 }
