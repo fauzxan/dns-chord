@@ -13,12 +13,14 @@ type RequestMessage struct {
 	TargetId uint64 // ID of the parameter node passed to the destination
 	IP       string // IP of the parameter node passed to the destination
 	Payload  map[uint64][]string
+	HopCount int
 }
 
 type ResponseMessage struct {
 	Type   string // PING | SYNC | ACK | FIND_SUCCESSOR | CLOSEST_PRECEDING_NODE
 	Nodeid uint64 // ID of the node in the response message
 	IP     string // IP of the node in the response message
+	QueryResponse []string
 }
 
 /*
