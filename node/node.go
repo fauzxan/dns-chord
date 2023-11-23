@@ -37,13 +37,13 @@ type Cache struct {
 	counter uint64   //
 }
 type Node struct {
-	Nodeid        uint64              // ID of the node
-	IP            string              // localhost or IP address AND port number. Can be set through environment variables.
-	FingerTable   []Pointer           // id mapping to ip address
-	Successor     Pointer             // Nodeid of it's direct successor.
-	Predecessor   Pointer             // Nodeid of it's direct predecessor.
-	CachedQuery   map[uint64]Cache    // caching queries on the node locally
-	HashIPStorage map[uint64][]string // storage for hashed ips associated with the node
+	Nodeid        uint64                         // ID of the node
+	IP            string                         // localhost or IP address AND port number. Can be set through environment variables.
+	FingerTable   []Pointer                      // id mapping to ip address
+	Successor     Pointer                        // Nodeid of it's direct successor.
+	Predecessor   Pointer                        // Nodeid of it's direct predecessor.
+	CachedQuery   map[uint64]Cache               // caching queries on the node locally
+	HashIPStorage map[uint64]map[uint64][]string // storage for hashed ips associated with the node
 	Counter       uint64
 }
 
@@ -93,7 +93,7 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
 	case PUT:
 		systemcommsin.Println("Recieved a message to insert a query")
-		status := node.PutQuery(msg.Payload)
+		status := node.PutQuery(msg.PayloadId, msg.Payload)
 		if status {
 			reply.Type = ACK
 		}
@@ -275,17 +275,21 @@ func (node *Node) CheckPredecessor() {
 	}
 }
 
-func (node *Node) PutQuery(payload map[uint64][]string) bool {
+func (node *Node) PutQuery(succesorid uint64, payload map[uint64][]string) bool {
 	//systemcommsin.Println("Recieving a request to insert values into storage")
+	_, ok := node.HashIPStorage[succesorid]
+	if !ok {
+		node.HashIPStorage[succesorid] = map[uint64][]string{}
+	}
 	for key, ip_cache := range payload {
-		node.HashIPStorage[key] = ip_cache
+		node.HashIPStorage[succesorid][key] = ip_cache
 	}
 
 	return true
 }
 
 func (node *Node) GetQuery(hashedId uint64) []string { // unused
-	ip_addr, ok := node.HashIPStorage[hashedId]
+	ip_addr, ok := node.HashIPStorage[node.Nodeid][hashedId]
 	if ok {
 		return ip_addr
 	} else {
@@ -313,7 +317,7 @@ func (node *Node) QueryDNS(website string) {
 			system.Printf("> %s. IN A %s\n", website, ip_c)
 		}
 	} else {
-		ip_addr, ok := node.HashIPStorage[hashedWebsite]
+		ip_addr, ok := node.HashIPStorage[node.Nodeid][hashedWebsite]
 		system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
 		if ok {
 			system.Println("> Retrieving from Local Storage")
@@ -346,7 +350,7 @@ func (node *Node) QueryDNS(website string) {
 					system.Printf("> %s. IN A %s\n", website, ip.String())
 				}
 				node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
-				reply = node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+				reply = node.CallRPC(message.RequestMessage{Type: PUT, PayloadId: succPointer.Nodeid, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
 				// system.Println(reply)
 				// system.Println("Node HashIPStorage: ", node.HashIPStorage)
 
@@ -435,7 +439,7 @@ func (node *Node) readFromStorage() {
 		return
 	}
 	defer file.Close()
-	var storage map[uint64][]string
+	var storage map[uint64]map[uint64][]string
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&storage)
 	if err != nil {
