@@ -36,28 +36,23 @@ func (node *Node) PutQuery(succesorid uint64, payload map[uint64][]string) bool 
 }
 
 /*
-replicate will be called when:
-	1. When a new query has come in (node.PutQuery)
-	2. 
+replicate will be called when a new query has come in (node.PutQuery)
 */
-// func (node *Node) replicate(payload map[uint64][]string){
-// 	// find the first k="REPLICATION_FACTOR" distinct successors from node.FingerTable, and send them a PUT message, so they can put it into their storage. 
-// 	replicationSuccessor := make([]string, REPLICATION_FACTOR)
-// 	replicationSuccessor = append(replicationSuccessor, node.Successor.IP)
-// 	for i:= 0; i<2; i++{
-// 		successor = node.FindSuccessor()
-// 		replicationSuccessor = append(replicationSuccessor, )
-// 	}
-// 	successor := node.FindSuccessor()
-	
-// }
-
-func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string){
-	_, ok := node.HashIPStorage[senderId]
-	if !ok {
-		node.HashIPStorage[senderId] = pay
+func (node *Node) replicate(payload map[uint64][]string){
+	replicationSuccessor := make([]Pointer, REPLICATION_FACTOR)
+	replicationSuccessor = append(replicationSuccessor, node.Successor)
+	for i:= 0; i<REPLICATION_FACTOR-1; i++{
+		successor, _ := node.FindSuccessor(replicationSuccessor[len(replicationSuccessor)-1].Nodeid, 0)
+		replicationSuccessor = append(replicationSuccessor, successor)
+	}
+	for _, pointer := range replicationSuccessor{
+		if pointer.IP == node.IP { continue }
+		msg := message.RequestMessage{Type: REPLICATE, Payload: payload, TargetId: node.Nodeid}
+		node.CallRPC(msg, pointer.IP)
 	}
 }
+
+
 
 func (node *Node) GetQuery(hashedId uint64) []string { // unused
 	ip_addr, ok := node.HashIPStorage[node.Nodeid][hashedId]
@@ -119,7 +114,7 @@ func (node *Node) QueryDNS(website string) {
 					system.Printf("> %s. IN A %s\n", website, ip.String())
 				}
 				node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
-				reply = node.CallRPC(message.RequestMessage{Type: PUT, PayloadId: succPointer.Nodeid, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+				reply = node.CallRPC(message.RequestMessage{Type: PUT, TargetId: succPointer.Nodeid, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
 
 				if reply.Type == ACK {
 					if len(node.CachedQuery) > CACHE_SIZE {
