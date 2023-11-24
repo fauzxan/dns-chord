@@ -22,7 +22,6 @@ Upon receiving a PUT message, or signal, it will simply
  2. Call node.replicate(payload)
 */
 func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool {
-	//systemcommsin.Println("Recieving a request to insert values into storage")
 	_, ok := node.HashIPStorage[succesorId]
 	if !ok {
 		node.HashIPStorage[succesorId] = map[uint64][]string{}
@@ -30,7 +29,6 @@ func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool 
 	for key, ip_cache := range payload {
 		node.HashIPStorage[succesorId][key] = ip_cache
 	}
-
 	go node.replicate(payload)
 	return true
 }
@@ -46,7 +44,7 @@ func (node *Node) replicate(payload map[uint64][]string) {
 		replicationSuccessor = append(replicationSuccessor, successor)
 	}
 	for _, pointer := range replicationSuccessor {
-		if pointer.IP == node.IP {
+		if (pointer.IP == node.IP || pointer == Pointer{}) {
 			continue
 		}
 		msg := message.RequestMessage{Type: REPLICATE, Payload: payload, TargetId: node.Nodeid}

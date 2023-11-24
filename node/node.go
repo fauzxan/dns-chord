@@ -10,16 +10,11 @@ like finding successors and notifying or updating neighboring nodes.
 package node
 
 import (
-	// "encoding/json"
-	// "fmt"
 	"math"
-	// "net"
-	// "os"
 	"strings"
 	"time"
 
 	"core.com/message"
-	// "core.com/utility"
 	"github.com/fatih/color"
 )
 
@@ -206,10 +201,10 @@ func (node *Node) FixFingers() {
 		}
 		// it has just restarted, so it needs to read from storage
 		if len(node.HashIPStorage) == 0 {
-			node.readFromStorage()
+			go node.readFromStorage()
 		}
 
-		node.writeToStorage()
+		go node.writeToStorage()
 
 	}
 }
