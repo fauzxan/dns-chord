@@ -31,7 +31,7 @@ func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool 
 		node.HashIPStorage[succesorId][key] = ip_cache
 	}
 
-	go node.replicate(payload)
+	// go node.replicate(payload)
 	return true
 }
 
@@ -157,7 +157,7 @@ func (node *Node) QueryDNS(website string) {
 
 func (node *Node) writeToStorage() {
 
-	filePath := system.Sprintf("/app/data/%s.json", node.IP)
+	filePath := system.Sprintf("%s.json", node.IP)
 	jsonData, err := json.Marshal(node.HashIPStorage)
 	if err != nil {
 		system.Println(err)
@@ -184,10 +184,10 @@ func (node *Node) writeToStorage() {
 }
 
 func (node *Node) readFromStorage() {
-	filePath := system.Sprintf("/app/data/%s.json", node.IP)
+	filePath := system.Sprintf("%s.json", node.IP)
 
 	// Open the file for reading
-	file, err := os.OpenFile(filePath, os.O_RDONLY, 0)
+	file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
 	if err != nil {
 		system.Printf("Error opening the file for reading: %v\n", err)
 		return
