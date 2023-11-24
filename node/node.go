@@ -12,9 +12,14 @@ package node
 import (
 	// "encoding/json"
 	// "fmt"
-	"math"
+	// "encoding/json"
+	// "fmt"
+	// "math"
 	// "net"
 	// "os"
+	// "net"
+	// "os"
+	"math"
 	"strings"
 	"time"
 
@@ -37,13 +42,13 @@ type Cache struct {
 	counter uint64   //
 }
 type Node struct {
-	Nodeid        uint64                         // ID of the node
-	IP            string                         // localhost or IP address AND port number. Can be set through environment variables.
-	FingerTable   []Pointer                      // id mapping to ip address
-	Successor     Pointer                        // Nodeid of it's direct successor.
-	Predecessor   Pointer                        // Nodeid of it's direct predecessor.
-	CachedQuery   map[uint64]Cache               // caching queries on the node locally
-	HashIPStorage map[uint64]map[uint64][]string // storage for hashed ips associated with the node
+	Nodeid        uint64              // ID of the node
+	IP            string              // localhost or IP address AND port number. Can be set through environment variables.
+	FingerTable   []Pointer           // id mapping to ip address
+	Successor     Pointer             // Nodeid of it's direct successor.
+	Predecessor   Pointer             // Nodeid of it's direct predecessor.
+	CachedQuery   map[uint64]Cache    // caching queries on the node locally
+	HashIPStorage map[uint64][]string // storage for hashed ips associated with the node
 	Counter       uint64
 }
 
@@ -99,13 +104,7 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
 	case PUT:
 		systemcommsin.Println("Recieved a message to insert a query")
-		status := node.PutQuery(msg.TargetId, msg.Payload)
-		if status {
-			reply.Type = ACK
-		}
-	case REPLICATE:
-		systemcommsin.Println("Recieved a message to replicate data")
-		status:= node.processReplicate(msg.TargetId, msg.Payload)
+		status := node.PutQuery(msg.Payload)
 		if status {
 			reply.Type = ACK
 		}

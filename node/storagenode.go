@@ -1,13 +1,8 @@
-/*
-	Has the client-like functionalities of the Node object.
-	1. Query the DNS server
-	2. Has the node storage
-*/
-
 package node
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -16,61 +11,17 @@ import (
 	"core.com/utility"
 )
 
-/*
-Upon receiving a PUT message, or signal, it will simply
- 1. Put the entry into local storage
- 2. Call node.replicate(payload)
-*/
-func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool {
+func (node *Node) PutQuery(payload map[uint64][]string) bool {
 	//systemcommsin.Println("Recieving a request to insert values into storage")
-	_, ok := node.HashIPStorage[succesorId]
-	if !ok {
-		node.HashIPStorage[succesorId] = map[uint64][]string{}
-	}
 	for key, ip_cache := range payload {
-		node.HashIPStorage[succesorId][key] = ip_cache
+		node.HashIPStorage[key] = ip_cache
 	}
 
-	go node.replicate(payload)
-	return true
-}
-
-/*
-replicate will be called when a new query has come in (node.PutQuery)
-*/
-func (node *Node) replicate(payload map[uint64][]string) {
-	replicationSuccessor := make([]Pointer, REPLICATION_FACTOR)
-	replicationSuccessor = append(replicationSuccessor, node.Successor)
-	for i := 0; i < REPLICATION_FACTOR-1; i++ {
-		successor, _ := node.FindSuccessor(replicationSuccessor[len(replicationSuccessor)-1].Nodeid, 0)
-		replicationSuccessor = append(replicationSuccessor, successor)
-	}
-	for _, pointer := range replicationSuccessor {
-		if pointer.IP == node.IP {
-			continue
-		}
-		msg := message.RequestMessage{Type: REPLICATE, Payload: payload, TargetId: node.Nodeid}
-		node.CallRPC(msg, pointer.IP)
-	}
-}
-
-/*
-Process Replicate will be called when a new REPLICATE message arrives
-*/
-func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string) bool {
-	_, ok := node.HashIPStorage[senderId]
-	if !ok {
-		node.HashIPStorage[senderId] = map[uint64][]string{}
-	}
-
-	for key, ip_cache := range payload {
-		node.HashIPStorage[senderId][key] = ip_cache
-	}
 	return true
 }
 
 func (node *Node) GetQuery(hashedId uint64) []string { // unused
-	ip_addr, ok := node.HashIPStorage[node.Nodeid][hashedId]
+	ip_addr, ok := node.HashIPStorage[hashedId]
 	if ok {
 		return ip_addr
 	} else {
@@ -78,6 +29,8 @@ func (node *Node) GetQuery(hashedId uint64) []string { // unused
 	}
 }
 
+// 1
+// 1000, 2000, 3000
 func (node *Node) QueryDNS(website string) {
 	if node.CachedQuery == nil {
 		node.CachedQuery = make(map[uint64]Cache)
@@ -96,7 +49,7 @@ func (node *Node) QueryDNS(website string) {
 			system.Printf("> %s. IN A %s\n", website, ip_c)
 		}
 	} else {
-		ip_addr, ok := node.HashIPStorage[node.Nodeid][hashedWebsite]
+		ip_addr, ok := node.HashIPStorage[hashedWebsite]
 		system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
 		if ok {
 			system.Println("> Retrieving from Local Storage")
@@ -129,7 +82,9 @@ func (node *Node) QueryDNS(website string) {
 					system.Printf("> %s. IN A %s\n", website, ip.String())
 				}
 				node.CachedQuery[hashedWebsite] = Cache{value: ip_addresses, counter: node.Counter}
-				reply = node.CallRPC(message.RequestMessage{Type: PUT, TargetId: succPointer.Nodeid, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+				reply = node.CallRPC(message.RequestMessage{Type: PUT, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
+				// system.Println(reply)
+				// system.Println("Node HashIPStorage: ", node.HashIPStorage)
 
 				if reply.Type == ACK {
 					if len(node.CachedQuery) > CACHE_SIZE {
@@ -146,6 +101,9 @@ func (node *Node) QueryDNS(website string) {
 						}
 
 					}
+					// for key, value := range node.CachedQuery
+					// 	system.Printf("Key: %d, Value: %s, %d\n", key, value.value[0], value.counter)
+					// }
 				} else {
 					systemcommsin.Println("Put failed")
 				}
@@ -153,61 +111,82 @@ func (node *Node) QueryDNS(website string) {
 		}
 
 	}
+	// node.CachedQuery[website] = ip.String();
+
 }
 
 func (node *Node) writeToStorage() {
 
-	filePath := system.Sprintf("/app/data/%s.json", node.IP)
+	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
+	// content := fmt.Sprintf("%d : %v\n", hashedWebsite, ip_addresses)
 	jsonData, err := json.Marshal(node.HashIPStorage)
 	if err != nil {
-		system.Println(err)
+		fmt.Println(err)
 		return
 	}
-	system.Printf("JSON data: %s\n", jsonData)
+	fmt.Printf("JSON data: %s\n", jsonData)
 	// Write to the file, create it if it doesn't exist
 	// Append to the file or create it if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		system.Printf("Error opening or creating the file: %v\n", err)
+		fmt.Printf("Error opening or creating the file: %v\n", err)
 		return
 	}
 
 	// Write the content to the file
 	_, err = file.Write(jsonData)
 	if err != nil {
-		system.Printf("Error writing to the file: %v\n", err)
+		fmt.Printf("Error writing to the file: %v\n", err)
 		return
 	}
 
-	system.Printf("JSON data written to file: %s\n", filePath)
+	fmt.Printf("JSON data written to file: %s\n", filePath)
+	// _, err = file.Seek(0, 0)
+	// if err != nil {
+	// 	fmt.Printf("Error seeking to the beginning of the file: %v\n", err)
+	// 	return
+	// }
+	// var storage map[uint64][]string
+	// decoder := json.NewDecoder(file)
+	// err = decoder.Decode(&storage)
+	// if err != nil {
+	// 	fmt.Printf("Error decoding the JSON data: %v\n", err)
+	// 	return
+	// }
+
+	// fmt.Printf("Data read from file\n")
+	// for key, value := range storage {
+	// 	fmt.Printf("Key: %v, Value: %v\n", key, value)
+	// }
 	defer file.Close()
 }
 
 func (node *Node) readFromStorage() {
-	filePath := system.Sprintf("/app/data/%s.json", node.IP)
+	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
 
 	// Open the file for reading
 	file, err := os.OpenFile(filePath, os.O_RDONLY, 0)
 	if err != nil {
-		system.Printf("Error opening the file for reading: %v\n", err)
+		fmt.Printf("Error opening the file for reading: %v\n", err)
 		return
 	}
 	defer file.Close()
-	var storage map[uint64]map[uint64][]string
+	var storage map[uint64][]string
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&storage)
 	if err != nil {
-		system.Printf("Error decoding the JSON data: %v\n", err)
+		fmt.Printf("Error decoding the JSON data: %v\n", err)
 		return
 	}
 
-	system.Printf("Data read from file\n")
+	fmt.Printf("Data read from file\n")
 
 	// When node crashes, node.HashIPStorage = storage
 
 	for key, value := range storage {
-		system.Printf("Key: %v, Value: %v\n", key, value)
+		fmt.Printf("Key: %v, Value: %v\n", key, value)
 	}
 	node.HashIPStorage = storage
 	defer file.Close()
+
 }
