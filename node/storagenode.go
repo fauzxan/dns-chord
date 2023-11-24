@@ -37,7 +37,7 @@ func (node *Node) replicate(payload map[uint64][]string) {
 	replicationSuccessor := make([]Pointer, REPLICATION_FACTOR)
 	replicationSuccessor = append(replicationSuccessor, node.Successor)
 
-	for i := 0; i < REPLICATION_FACTOR; i++ {
+	for i := 0; i < REPLICATION_FACTOR-1; i++ {
 		succesor, _ := node.FindSuccessor(replicationSuccessor[len(replicationSuccessor)-1].Nodeid, 0)
 		replicationSuccessor = append(replicationSuccessor, succesor)
 	}
@@ -208,9 +208,9 @@ func (node *Node) readFromStorage() {
 	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
 
 	// Open the file for reading
-	file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		fmt.Printf("Error opening the file for reading: %v\n", err)
+		fmt.Printf("Error opening or creating the file for reading: %v\n", err)
 		return
 	}
 	defer file.Close()

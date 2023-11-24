@@ -50,7 +50,7 @@ type Node struct {
 // Constants
 const M = 32
 const CACHE_SIZE = 5
-const REPLICATION_FACTOR = 3
+const REPLICATION_FACTOR = 1
 
 // Message types
 const PING = "ping"
@@ -270,13 +270,20 @@ a new predecessor in notify.
 */
 func (node *Node) CheckPredecessor() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		if (node.Predecessor == Pointer{}) {
 			continue
 		}
 		//system.Println("I came")
 		reply := node.CallRPC(message.RequestMessage{Type: PING}, node.Predecessor.IP)
 		if reply.Type == EMPTY {
+			hashMap, ok := node.HashIPStorage[node.Predecessor.Nodeid]
+			if ok {
+				for id, ip_cache := range hashMap {
+					node.HashIPStorage[node.Nodeid][id] = ip_cache
+				}
+				delete(node.HashIPStorage, node.Predecessor.Nodeid)
+			}
 			node.Predecessor = Pointer{}
 		} else {
 			system.Println("Predecessor", node.Predecessor.IP, "is alive")
