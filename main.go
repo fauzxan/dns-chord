@@ -6,8 +6,9 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	"strconv"
 	"time"
+
+	"core.com/utility"
 
 	"core.com/node"
 
@@ -19,13 +20,16 @@ import (
 var system = color.New(color.FgCyan).Add(color.BgBlack)
 
 /*
-	Show a list of options to choose from.
+Show a list of options to choose from.
 */
-func showmenu(){
+func showmenu() {
 	system.Println("********************************")
 	system.Println("\t\tMENU")
 	system.Println("Press 1 to see the fingertable")
 	system.Println("Press 2 to see the successor and predecessor")
+	system.Println("Press 3 to see the node storage")
+	system.Println("Press 4 to see the cache")
+	system.Println("Press 5 to query a website")
 	system.Println("Press m to see the menu")
 	system.Println("********************************")
 }
@@ -37,16 +41,18 @@ func main() {
 		system.Println("Error getting env variables...")
 	}
 
-	// Get the some free port number
-	var port, porterr = GetFreePort()
-	if porterr != nil{
-		system.Println("Error finding new port number")
-	}
+	var port string
 	var helperIp string
 
 	// Read your own port number and also the IP address of the other node, if new network
-	myIpAddress := GetOutboundIP().String() 
+	myIpAddress := utility.GetOutboundIP().String()
 	reader := bufio.NewReader(os.Stdin)
+	// read input from user
+	system.Print("Enter your port number:")
+	port, err = reader.ReadString('\n')
+	if err != nil {
+		system.Fprintln(os.Stderr, "Error reading input:", err)
+	}
 	system.Println("Enter IP address and port used to join network:")
 	// read input from user
 	helperIp, err = reader.ReadString('\n')
@@ -54,13 +60,18 @@ func main() {
 		system.Fprintln(os.Stderr, "Error reading input:", err)
 	}
 
+	var addr = myIpAddress + ":" + port
 
 	// Create new Node object for yourself
-	me := node.Node{}
-	var addr = myIpAddress + ":" + strconv.Itoa(port)
+	me := node.Node{
+		Nodeid:        utility.GenerateHash(addr),
+		IP:            addr[:len(addr)-1],
+		CachedQuery:   make(map[uint64]node.Cache, 69),
+		HashIPStorage: make(map[uint64]map[uint64][]string, 69),
+		Logging:       true,
+	}
+
 	system.Println(addr)
-	me.IP = addr
-	me.Nodeid = GenerateHash(addr)
 	system.Println("My id is:", me.Nodeid)
 
 	// Bind yourself to a port and listen to it
@@ -72,16 +83,14 @@ func main() {
 	if err != nil {
 		system.Println("Could not listen to TCP address", err)
 	}
-	system.Println("********************************")
-	system.Println("Node is running at:", tcpAddr)
-	system.Println("********************************")
 
 	// Register RPC methods and accept incoming requests
 	rpc.Register(&me)
+	system.Println("Node is runnning at IP address:", tcpAddr)
 	go rpc.Accept(inbound)
 
 	// Join the network using helperIp
-	me.JoinNetwork(helperIp[:len(helperIp) - 1])
+	me.JoinNetwork(helperIp[:len(helperIp)-1])
 
 	showmenu()
 	// Keep the parent thread alive
@@ -89,17 +98,37 @@ func main() {
 		time.Sleep(1000)
 		var input string
 		fmt.Scanln(&input)
-		switch input{
+
+		switch input {
 		case "1":
+			me.Logging = false
 			me.PrintFingers()
+			me.Logging = true
 		case "2":
+			me.Logging = false
 			system.Println("\n\nSuccessor")
 			me.PrintSuccessor()
 			system.Println("Predecessor")
 			me.PrintPredecessor()
-		default:
-			system.Println("Enter valid number")
+			me.Logging = true
+		case "3":
+			me.Logging = false
+			me.PrintStorage()
+			me.Logging = true
+		case "4":
+			me.Logging = false
+			me.PrintCache()
+			me.Logging = true
+		case "5":
+			me.Logging = false
+			system.Print("Please Type the Website: ")
+			fmt.Scanln(&input)
+			me.QueryDNS(input)
+			me.Logging = true
+		case "m":
 			showmenu()
+		default:
+			system.Println("Invalid input bro...")
 		}
 	}
 }

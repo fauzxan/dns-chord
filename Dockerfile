@@ -7,6 +7,9 @@ RUN go mod download
 
 ADD . /app
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /core
+RUN CGO_ENABLED=0 GOOS=linux go build -o /core.com
 
-CMD [ "/core" ]
+VOLUME [ "/mydata" ]
+# RUN mkdir -p /app/data
+
+CMD [ "/core.com" ]
