@@ -37,3 +37,9 @@ If successfully built, then run, as well as to bind the volume with the containe
 ```
 Do note that the -it tag is important to enable interactivity and also see colored output.
 This mounts the "mydata" volume to the "/app/data" path inside the container.
+
+If you kill the container, then to restart it simply run:
+```
+docker start -ai <container_name>
+```
+You may close the terminal, and the container will still keep running in the background. You can confirm this behaviour via the log output of the container on docker desktop. 
