@@ -17,10 +17,11 @@ type RequestMessage struct {
 }
 
 type ResponseMessage struct {
-	Type   string // PING | SYNC | ACK | FIND_SUCCESSOR | CLOSEST_PRECEDING_NODE
-	Nodeid uint64 // ID of the node in the response message
-	IP     string // IP of the node in the response message
+	Type          string // PING | SYNC | ACK | FIND_SUCCESSOR | CLOSEST_PRECEDING_NODE
+	Nodeid        uint64 // ID of the node in the response message
+	IP            string // IP of the node in the response message
 	QueryResponse []string
+	Payload       map[uint64][]string
 }
 
 /*

@@ -72,6 +72,22 @@ func (node *Node) GetQuery(hashedId uint64) []string { // unused
 	}
 }
 
+func (node *Node) GetSomeRecords(prececId uint64) map[uint64][]string {
+	returnPayload := make(map[uint64][]string)
+	nodeStorage, ok := node.HashIPStorage[node.Nodeid]
+	if ok {
+		for hashedWebsite := range nodeStorage {
+			if prececId >= hashedWebsite {
+				returnPayload[hashedWebsite] = nodeStorage[hashedWebsite]
+				delete(nodeStorage, hashedWebsite)
+			}
+		}
+		return returnPayload
+	} else {
+		return nil
+	}
+}
+
 // 1
 // 1000, 2000, 3000
 func (node *Node) QueryDNS(website string) {
