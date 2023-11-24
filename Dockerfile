@@ -10,6 +10,7 @@ ADD . /app
 RUN CGO_ENABLED=0 GOOS=linux go build -o /core.com
 
 VOLUME [ "/mydata" ]
-# RUN mkdir -p /app/data
 
-CMD [ "/core.com" ]
+RUN go install golang.org/x/pkgsite/cmd/pkgsite@latest
+
+CMD pkgsite

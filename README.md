@@ -39,7 +39,21 @@ Do note that the -it tag is important to enable interactivity and also see color
 This mounts the "mydata" volume to the "/app/data" path inside the container.
 
 If you kill the container, then to restart it simply run:
-```
+```shell
 docker start -ai <container_name>
 ```
 You may close the terminal, and the container will still keep running in the background. You can confirm this behaviour via the log output of the container on docker desktop. 
+
+### Documentation docker setup
+Occassionally pull from main to this branch.
+To run documentation, switch to the documentation branch, and build the container using
+
+```shell
+docker build --tag documentation-dns-chord .
+
+docker run documentation-dns-chord
+```
+Subsequent runs can just simply run the container again as
+```shell
+docker start <container-name>
+```
