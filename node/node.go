@@ -171,7 +171,6 @@ func (node *Node) JoinNetwork(helper string) {
 			node.HashIPStorage[node.Nodeid][hashedWebsite] = reply.Payload[hashedWebsite]
 		}
 	}
-	time.Sleep(2 * time.Second)
 	go node.stabilize()
 	go node.CheckPredecessor()
 }
@@ -224,9 +223,7 @@ func (node *Node) FixFingers() {
 
 	for {
 		time.Sleep(1 * time.Second)
-		if node.Logging {
-			system.Println("> Fixing fingers...")
-		}
+		system.Println("> Fixing fingers...")
 		for id := range node.FingerTable {
 			nodePlusTwoI := (node.Nodeid + uint64(math.Pow(2, float64(id))))
 			power := uint64(math.Pow(2, float64(M)))
