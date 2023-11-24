@@ -141,7 +141,6 @@ func (node *Node) JoinNetwork(helper string) {
 			system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
 		}
 	}
-	time.Sleep(2 * time.Second)
 	go node.stabilize()
 	go node.CheckPredecessor()
 }
@@ -191,7 +190,7 @@ new nodes into their finger tables.
 func (node *Node) FixFingers() {
 
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		system.Println("> Fixing fingers...")
 		for id := range node.FingerTable {
 			nodePlusTwoI := (node.Nodeid + uint64(math.Pow(2, float64(id))))
@@ -223,7 +222,7 @@ knows of no closer predecessor than n.
 */
 func (node *Node) stabilize() {
 	for {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		reply := node.CallRPC(
 			message.RequestMessage{Type: GET_PREDECESSOR, TargetId: node.Successor.Nodeid, IP: node.Successor.IP},
 			node.Successor.IP,
