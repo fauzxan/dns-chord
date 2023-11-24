@@ -11,6 +11,28 @@ import (
 	"core.com/utility"
 )
 
+/*
+Upon receiving a PUT message, or signal, it will simply
+ 1. Put the entry into local storage
+ 2. Call node.replicate(payload)
+*/
+func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool {
+	//systemcommsin.Println("Recieving a request to insert values into storage")
+	_, ok := node.HashIPStorage[succesorId]
+	if !ok {
+		node.HashIPStorage[succesorId] = map[uint64][]string{}
+	}
+	for key, ip_cache := range payload {
+		node.HashIPStorage[succesorId][key] = ip_cache
+	}
+
+	go node.replicate(payload)
+	return true
+}
+
+/*
+replicate will be called when a new query has come in (node.PutQuery)
+*/
 func (node *Node) replicate(payload map[uint64][]string) {
 	replicationSuccessor := make([]Pointer, REPLICATION_FACTOR)
 	replicationSuccessor = append(replicationSuccessor, node.Successor)
@@ -38,20 +60,6 @@ func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string)
 	for key, ip_cache := range payload {
 		node.HashIPStorage[senderId][key] = ip_cache
 	}
-	return true
-}
-
-func (node *Node) PutQuery(succesorid uint64, payload map[uint64][]string) bool {
-	//systemcommsin.Println("Recieving a request to insert values into storage")
-	_, ok := node.HashIPStorage[succesorid]
-	if !ok {
-		node.HashIPStorage[succesorid] = map[uint64][]string{}
-	}
-	for key, ip_cache := range payload {
-		node.HashIPStorage[succesorid][key] = ip_cache
-	}
-
-	node.replicate(payload)
 	return true
 }
 
