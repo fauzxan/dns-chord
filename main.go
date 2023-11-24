@@ -29,6 +29,7 @@ func showmenu() {
 	system.Println("Press 2 to see the successor and predecessor")
 	system.Println("Press 3 to see the node storage")
 	system.Println("Press 4 to see the cache")
+	system.Println("Press 5 to query a website")
 	system.Println("Press m to see the menu")
 	system.Println("********************************")
 }
@@ -67,6 +68,7 @@ func main() {
 		IP:            addr[:len(addr)-1],
 		CachedQuery:   make(map[uint64]node.Cache, 69),
 		HashIPStorage: make(map[uint64]map[uint64][]string, 69),
+		Logging:       true,
 	}
 
 	system.Println(addr)
@@ -99,20 +101,30 @@ func main() {
 
 		switch input {
 		case "1":
+			me.Logging = false
 			me.PrintFingers()
+			me.Logging = true
 		case "2":
+			me.Logging = false
 			system.Println("\n\nSuccessor")
 			me.PrintSuccessor()
 			system.Println("Predecessor")
 			me.PrintPredecessor()
+			me.Logging = true
 		case "3":
+			me.Logging = false
 			me.PrintStorage()
+			me.Logging = true
 		case "4":
+			me.Logging = false
 			me.PrintCache()
-		case "query":
+			me.Logging = true
+		case "5":
+			me.Logging = false
 			system.Print("Please Type the Website: ")
 			fmt.Scanln(&input)
 			me.QueryDNS(input)
+			me.Logging = true
 		case "m":
 			showmenu()
 		default:

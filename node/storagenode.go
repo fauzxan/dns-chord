@@ -167,7 +167,9 @@ func (node *Node) writeToStorage() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("JSON data: %s\n", jsonData)
+	if node.Logging {
+		fmt.Printf("JSON data: %s\n", jsonData)
+	}
 	// Write to the file, create it if it doesn't exist
 	// Append to the file or create it if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
@@ -182,8 +184,9 @@ func (node *Node) writeToStorage() {
 		fmt.Printf("Error writing to the file: %v\n", err)
 		return
 	}
-
-	fmt.Printf("JSON data written to file: %s\n", filePath)
+	if node.Logging {
+		fmt.Printf("JSON data written to file: %s\n", filePath)
+	}
 	// _, err = file.Seek(0, 0)
 	// if err != nil {
 	// 	fmt.Printf("Error seeking to the beginning of the file: %v\n", err)
@@ -222,7 +225,9 @@ func (node *Node) readFromStorage() {
 		return
 	}
 
-	fmt.Printf("Data read from file\n")
+	if node.Logging {
+		fmt.Printf("Data read from file\n")
+	}
 
 	// When node crashes, node.HashIPStorage = storage
 
