@@ -200,7 +200,7 @@ func (node *Node) readFromStorage() {
 	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
 
 	// Open the file for reading
-	file, err := os.OpenFile(filePath, os.O_RDONLY, 0)
+	file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
 	if err != nil {
 		fmt.Printf("Error opening the file for reading: %v\n", err)
 		return
