@@ -32,39 +32,43 @@ type Pointer struct {
 	Nodeid uint64 // ID of the pointed Node
 	IP     string // IP of the pointed Node
 }
-type Cache struct {
-	value   []string // values corresponding to websites
-	counter uint64   //
-}
+
+/*
+Represents everything that a node in the chord network needs to take care of.
+*/
 type Node struct {
 	Nodeid        uint64                         // ID of the node
 	IP            string                         // localhost or IP address AND port number. Can be set through environment variables.
 	FingerTable   []Pointer                      // id mapping to ip address
 	Successor     Pointer                        // Nodeid of it's direct successor.
 	Predecessor   Pointer                        // Nodeid of it's direct predecessor.
-	CachedQuery   map[uint64]Cache               // caching queries on the node locally
+	CachedQuery   map[uint64]LRUCache            // caching queries on the node locally
 	HashIPStorage map[uint64]map[uint64][]string // storage for hashed ips associated with the node
-	Counter       uint64
-	Logging       bool
+	CacheTime     uint64                         // To keep track of scalar timestamp to assign to LRUCache
+	Logging       bool							 // REMOVE LATER
 }
 
 // Constants
-const M = 32
-const CACHE_SIZE = 5
-const REPLICATION_FACTOR = 1
+const (
+	M                  = 32
+	CACHE_SIZE         = 5
+	REPLICATION_FACTOR = 1
+)
 
-// Message types
-const PING = "ping"
-const ACK = "ack"
-const FIND_SUCCESSOR = "find_successor"
-const CLOSEST_PRECEDING_NODE = "closest_preceding_node"
-const GET_PREDECESSOR = "get_predecessor"
-const NOTIFY = "notify"
-const PUT = "put"
-const GET = "get"
-const GETSOME = "get_some"
-const EMPTY = "empty"
-const REPLICATE = "replicate"
+// Message types. 
+const (
+	PING                   = "ping" // Used to check predecessor.
+	ACK                    = "ack" // Used for general acknowledgements.
+	FIND_SUCCESSOR         = "find_successor" // Used to find successor.
+	CLOSEST_PRECEDING_NODE = "closest_preceding_node" // Used to find the closest preceding node, given a successor id.
+	GET_PREDECESSOR        = "get_predecessor" // Used to get the predecessor of some node. 
+	NOTIFY                 = "notify" // Used to notify a node about a new predecessor.
+	PUT                    = "put" // Used to insert a DNS query.
+	GET                    = "get" // Used to retrieve a DNS record.
+	GETSOME                = "get_some" // Used to shift entries.
+	EMPTY                  = "empty" // Placeholder or undefined message type or errenous communications. 
+	REPLICATE              = "replicate" // Used to replicate data.
+)
 
 /*
 The default method called by all RPCs. This method receives different
@@ -109,7 +113,7 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
 	case GETSOME:
 		systemcommsin.Println("Received a message to Get some DNS records")
-		reply.Payload = node.GetSomeRecords(msg.TargetId)
+		reply.Payload = node.GetShiftRecords(msg.TargetId)
 	case PUT:
 		if node.Logging {
 			systemcommsin.Println("Recieved a message to insert a query")
@@ -173,6 +177,7 @@ func (node *Node) JoinNetwork(helper string) {
 	}
 	go node.stabilize()
 	go node.CheckPredecessor()
+	go node.replicate()
 }
 
 /*

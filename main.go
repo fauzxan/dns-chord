@@ -66,7 +66,7 @@ func main() {
 	me := node.Node{
 		Nodeid:        utility.GenerateHash(addr),
 		IP:            addr[:len(addr)-1],
-		CachedQuery:   make(map[uint64]node.Cache, 69),
+		CachedQuery:   make(map[uint64]node.LRUCache, 69),
 		HashIPStorage: make(map[uint64]map[uint64][]string, 69),
 		Logging:       true,
 	}
