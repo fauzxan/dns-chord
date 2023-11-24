@@ -12,11 +12,7 @@ package node
 import (
 	// "encoding/json"
 	// "fmt"
-	// "encoding/json"
-	// "fmt"
 	// "math"
-	// "net"
-	// "os"
 	// "net"
 	// "os"
 	"math"
@@ -42,36 +38,32 @@ type Cache struct {
 	counter uint64   //
 }
 type Node struct {
-	Nodeid        uint64              // ID of the node
-	IP            string              // localhost or IP address AND port number. Can be set through environment variables.
-	FingerTable   []Pointer           // id mapping to ip address
-	Successor     Pointer             // Nodeid of it's direct successor.
-	Predecessor   Pointer             // Nodeid of it's direct predecessor.
-	CachedQuery   map[uint64]Cache    // caching queries on the node locally
-	HashIPStorage map[uint64][]string // storage for hashed ips associated with the node
+	Nodeid        uint64                         // ID of the node
+	IP            string                         // localhost or IP address AND port number. Can be set through environment variables.
+	FingerTable   []Pointer                      // id mapping to ip address
+	Successor     Pointer                        // Nodeid of it's direct successor.
+	Predecessor   Pointer                        // Nodeid of it's direct predecessor.
+	CachedQuery   map[uint64]Cache               // caching queries on the node locally
+	HashIPStorage map[uint64]map[uint64][]string // storage for hashed ips associated with the node
 	Counter       uint64
 }
 
 // Constants
-const (
-	M                  = 32 // Size of the fingertable
-	CACHE_SIZE         = 5  // Number of entries in the cache
-	REPLICATION_FACTOR = 3  // Number of nodes to replicate it to
-)
+const M = 32
+const CACHE_SIZE = 5
+const REPLICATION_FACTOR = 3
 
 // Message types
-const (
-	PING                   = "ping"
-	ACK                    = "ack"
-	FIND_SUCCESSOR         = "find_successor"
-	CLOSEST_PRECEDING_NODE = "closest_preceding_node"
-	GET_PREDECESSOR        = "get_predecessor"
-	NOTIFY                 = "notify"
-	PUT                    = "put"
-	GET                    = "get"
-	EMPTY                  = "empty"
-	REPLICATE              = "replicate"
-)
+const PING = "ping"
+const ACK = "ack"
+const FIND_SUCCESSOR = "find_successor"
+const CLOSEST_PRECEDING_NODE = "closest_preceding_node"
+const GET_PREDECESSOR = "get_predecessor"
+const NOTIFY = "notify"
+const PUT = "put"
+const GET = "get"
+const EMPTY = "empty"
+const REPLICATE = "replicate"
 
 /*
 The default method called by all RPCs. This method receives different
@@ -104,10 +96,17 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
 	case PUT:
 		systemcommsin.Println("Recieved a message to insert a query")
-		status := node.PutQuery(msg.Payload)
+		status := node.PutQuery(msg.TargetId, msg.Payload)
 		if status {
 			reply.Type = ACK
 		}
+	case REPLICATE:
+		systemcommsin.Println("Recieved a message to replicate data")
+		status := node.processReplicate(msg.TargetId, msg.Payload)
+		if status {
+			reply.Type = ACK
+		}
+
 	default:
 		// system.Println("Client is alive and listening")
 		time.Sleep(1000)
