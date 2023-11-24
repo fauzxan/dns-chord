@@ -45,6 +45,7 @@ type Node struct {
 	CachedQuery   map[uint64]Cache               // caching queries on the node locally
 	HashIPStorage map[uint64]map[uint64][]string // storage for hashed ips associated with the node
 	Counter       uint64
+	Logging       bool
 }
 
 // Constants
@@ -61,6 +62,7 @@ const GET_PREDECESSOR = "get_predecessor"
 const NOTIFY = "notify"
 const PUT = "put"
 const GET = "get"
+const GETSOME = "get_some"
 const EMPTY = "empty"
 const REPLICATE = "replicate"
 
@@ -69,38 +71,57 @@ The default method called by all RPCs. This method receives different
 types of requests, and calls the appropriate functions.
 */
 func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *message.ResponseMessage) error {
-	systemcommsin.Println("Message of type", msg.Type, "received.")
+	if node.Logging {
+		systemcommsin.Println("Message of type", msg.Type, "received.")
+	}
 	switch msg.Type {
 	case PING:
-		systemcommsin.Println("Received ping message")
+		if node.Logging {
+			systemcommsin.Println("Received ping message")
+		}
 		reply.Type = ACK
 	case FIND_SUCCESSOR:
-		systemcommsin.Println("Received a message to find successor of", msg.TargetId)
+		if node.Logging {
+			systemcommsin.Println("Received a message to find successor of", msg.TargetId)
+		}
 		pointer, _ := node.FindSuccessor(msg.TargetId, msg.HopCount)
 		reply.Type = ACK
 		reply.Nodeid = pointer.Nodeid
 		reply.IP = pointer.IP
 	case NOTIFY:
-		systemcommsin.Println("Received a message to notify me about a new predecessor", msg.TargetId)
+		if node.Logging {
+			systemcommsin.Println("Received a message to notify me about a new predecessor", msg.TargetId)
+		}
 		status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
 		if status {
 			reply.Type = ACK
 		}
 	case GET_PREDECESSOR:
-		systemcommsin.Println("Received a message to get predecessor")
+		if node.Logging {
+			systemcommsin.Println("Received a message to get predecessor")
+		}
 		reply.Nodeid = node.Predecessor.Nodeid
 		reply.IP = node.Predecessor.IP
 	case GET:
-		systemcommsin.Println("Received a message to Get DNS record")
+		if node.Logging {
+			systemcommsin.Println("Received a message to Get DNS record")
+		}
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
+	case GETSOME:
+		systemcommsin.Println("Received a message to Get some DNS records")
+		reply.Payload = node.GetSomeRecords(msg.TargetId)
 	case PUT:
-		systemcommsin.Println("Recieved a message to insert a query")
+		if node.Logging {
+			systemcommsin.Println("Recieved a message to insert a query")
+		}
 		status := node.PutQuery(msg.TargetId, msg.Payload)
 		if status {
 			reply.Type = ACK
 		}
 	case REPLICATE:
-		systemcommsin.Println("Recieved a message to replicate data")
+		if node.Logging {
+			systemcommsin.Println("Recieved a message to replicate data")
+		}
 		status := node.processReplicate(msg.TargetId, msg.Payload)
 		if status {
 			reply.Type = ACK
@@ -108,7 +129,7 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 
 	default:
 		// system.Println("Client is alive and listening")
-		time.Sleep(1000)
+		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
 }
@@ -139,6 +160,15 @@ func (node *Node) JoinNetwork(helper string) {
 		system.Println("> Finger table has been updated...")
 		for i := 0; i < len(node.FingerTable); i++ {
 			system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
+		}
+		system.Println("Performing key re-distribution")
+		reply = node.CallRPC(message.RequestMessage{Type: GETSOME, TargetId: node.Successor.Nodeid}, node.Successor.IP)
+		_, ok := node.HashIPStorage[node.Nodeid]
+		if !ok {
+			node.HashIPStorage[node.Nodeid] = map[uint64][]string{}
+		}
+		for hashedWebsite := range reply.Payload {
+			node.HashIPStorage[node.Nodeid][hashedWebsite] = reply.Payload[hashedWebsite]
 		}
 	}
 	go node.stabilize()
@@ -177,7 +207,9 @@ func (node *Node) ClosestPrecedingNode(id uint64) Pointer {
 			return node.FingerTable[i]
 		}
 	}
-	system.Println("> Closest Preceding node outside fingertable:", Pointer{Nodeid: node.Nodeid, IP: node.IP})
+	if node.Logging {
+		system.Println("> Closest Preceding node outside fingertable:", Pointer{Nodeid: node.Nodeid, IP: node.IP})
+	}
 	return Pointer{Nodeid: node.Nodeid, IP: node.IP}
 }
 
@@ -245,7 +277,9 @@ func (node *Node) stabilize() {
 				node.Successor.IP,
 			)
 			if reply.Type == ACK {
-				system.Println("Successfully notified successor of it's new predecessor")
+				if node.Logging {
+					system.Println("Successfully notified successor of it's new predecessor")
+				}
 			}
 		}
 	}
@@ -286,10 +320,13 @@ func (node *Node) CheckPredecessor() {
 					node.HashIPStorage[node.Nodeid][id] = ip_cache
 				}
 				delete(node.HashIPStorage, node.Predecessor.Nodeid)
+				node.Predecessor = Pointer{}
 			}
-			node.Predecessor = Pointer{}
+
 		} else {
-			system.Println("Predecessor", node.Predecessor.IP, "is alive")
+			if node.Logging {
+				system.Println("Predecessor", node.Predecessor.IP, "is alive")
+			}
 		}
 	}
 }

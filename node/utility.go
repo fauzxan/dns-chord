@@ -16,7 +16,9 @@ import (
 Node utility function to call RPC given a request message, and a destination IP address
 */
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
-	systemcommsout.Println(node.Nodeid, node.IP, "is sending message", msg, "to", IP)
+	if node.Logging{
+		systemcommsout.Println(node.Nodeid, node.IP, "is sending message", msg, "to", IP)
+	}
 	clnt, err := rpc.Dial("tcp", IP)
 	reply := message.ResponseMessage{}
 	if err != nil {
@@ -32,7 +34,9 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 		reply.Type = EMPTY
 		return reply
 	}
-	systemcommsin.Println("Received reply", reply, "from", IP)
+	if node.Logging{
+		systemcommsin.Println("Received reply", reply, "from", IP)
+	}
 	return reply
 }
 
