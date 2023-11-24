@@ -280,6 +280,10 @@ func (node *Node) CheckPredecessor() {
 			hashMap, ok := node.HashIPStorage[node.Predecessor.Nodeid]
 			if ok {
 				for id, ip_cache := range hashMap {
+					_, ok := node.HashIPStorage[node.Nodeid]
+					if !ok {
+						node.HashIPStorage[node.Nodeid] = make(map[uint64][]string)
+					}
 					node.HashIPStorage[node.Nodeid][id] = ip_cache
 				}
 				delete(node.HashIPStorage, node.Predecessor.Nodeid)
