@@ -128,9 +128,9 @@ func main() {
 			// Pause logging
 			zerolog.SetGlobalLevel(zerolog.Disabled)
 			fmt.Scanln(&input)
-			me.QueryDNS(input)
 			// Resume logging
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			me.QueryDNS(input)
 		case "m":
 			showmenu()
 		default:
