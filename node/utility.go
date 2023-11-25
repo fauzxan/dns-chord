@@ -4,6 +4,7 @@ import (
 	"net/rpc"
 
 	"core.com/message"
+	"github.com/rs/zerolog/log"
 )
 
 /*
@@ -16,69 +17,67 @@ import (
 Node utility function to call RPC given a request message, and a destination IP address.
 */
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
-	if node.Logging {
-		systemcommsout.Println(node.Nodeid, node.IP, "is sending message", msg, "to", IP)
-	}
+	log.Info().Msgf("Nodeid: %d IP: %s is sending message %v to IP: %s", node.Nodeid, node.IP, msg, IP)
 	clnt, err := rpc.Dial("tcp", IP)
 	reply := message.ResponseMessage{}
 	if err != nil {
-		system.Println("Error Dialing RPC:", err)
-		systemcommsin.Println("Received reply", reply)
+		log.Error().Err(err).Msg("Error Dialing RPC")
+		log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
 		reply.Type = EMPTY
 		return reply
 	}
 	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
 	if err != nil {
-		system.Println("Faced an error trying to call RPC:", err)
-		systemcommsin.Println("Received reply", reply)
+		log.Error().Err(err).Msg("Error calling RPC")
+		log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
 		reply.Type = EMPTY
 		return reply
 	}
-	if node.Logging {
-		systemcommsin.Println("Received reply", reply, "from", IP)
-	}
+	log.Info().Msgf("Received reply from %s", IP)
 	return reply
 }
 
 /*
-Node utility function to print fingers.
+Node utility function to print fingers
 */
 func (node *Node) PrintFingers() {
-	system.Println("\n\nFINGER TABLE REQUESTED")
+	log.Info().Msg("Finger Table:")
 	for i := 0; i < len(node.FingerTable); i++ {
-		system.Printf("> Finger[%d]: %d : %s\n", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
+		log.Info().Msgf("> Finger[%d]: Nodeid: %d IP: %s", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
 	}
 }
 
 /*
-Node utility function to print the successor.
+Node utility function to print the successor
 */
 func (node *Node) PrintSuccessor() {
-	system.Println(node.Successor)
+	log.Info().Msg("Successor:")
+	log.Info().Msgf(">Nodeid: %d Successor.IP: %s", node.Successor.Nodeid, node.Successor.IP)
 }
 
 /*
-Node utility function to print predecessor.
+Node utility function to print predecessor
 */
 func (node *Node) PrintPredecessor() {
-	system.Println(node.Predecessor)
+	log.Info().Msg("Predecessor:")
+	log.Info().Msgf(">Nodeid: %d Predecessor.IP: %s", node.Predecessor.Nodeid, node.Predecessor.IP)
 }
 
-/*
-Node utility function to print memory storage.
-*/
 func (node *Node) PrintStorage() {
-	system.Println("\n\nSTORAGE TABLE REQUESTED")
-	system.Println(node.HashIPStorage)
+	log.Info().Msg("STORAGE TABLE REQUESTED")
+	log.Info().Msg("Storage:")
+	for id, storage := range node.HashIPStorage {
+		log.Info().Msgf(">id: %d", id)
+		for _, value := range storage {
+			log.Info().Msgf(">>value: %s", value)
+		}
+	}
 }
 
-/*
-Node utility function to print cache.
-*/
 func (node *Node) PrintCache() {
-	system.Println("\n\nCACHE TABLE REQUESTED")
+	log.Info().Msg("CACHE TABLE REQUESTED")
 	for id, cache := range node.CachedQuery {
-		system.Printf(">%d %s\n", id, cache.value)
+		log.Info().Msgf(">id: %d value: %s", id, cache.value)
 	}
 }
 

@@ -1,7 +1,7 @@
 /*
-The QueryDNS function in the Chord-based DNS system first checks its cache, then local storage, 
-and queries the Chord network for website records. If not found, it resorts to traditional DNS. 
-It optimizes by caching recent queries and replicating data for resilience. The code handles queries 
+The QueryDNS function in the Chord-based DNS system first checks its cache, then local storage,
+and queries the Chord network for website records. If not found, it resorts to traditional DNS.
+It optimizes by caching recent queries and replicating data for resilience. The code handles queries
 efficiently in a distributed network, enhancing DNS performance.
 */
 
@@ -17,13 +17,14 @@ import (
 
 	"core.com/message"
 	"core.com/utility"
+	"github.com/rs/zerolog/log"
 )
 
 /*
 Used for in-memory-storage. Used to maintain the list of recent queries, and improve query speed.
 */
 type LRUCache struct {
-	value   []string // List of values corresponding to websites records.
+	value     []string // List of values corresponding to websites records.
 	cacheTime uint64   // Counter to indicate the timestamp of the entry. Used for kicking out Least Recently Used.
 }
 
@@ -45,48 +46,48 @@ func (node *Node) QueryDNS(website string) {
 	node.CacheTime += 1
 
 	if strings.HasPrefix(website, "www.") {
-		system.Println("> Removing Prefix")
+		log.Info().Msg("Removing Prefix")
 		website = website[4:]
 	}
 	hashedWebsite := utility.GenerateHash(website)
 	ip_addr, ok := node.CachedQuery[hashedWebsite]
 	if ok {
-		system.Println("> Retrieving from LRUCache")
+		log.Info().Msg("Retrieving from LRUCache")
 		for _, ip_c := range ip_addr.value {
-			system.Printf("> %s. IN A %s\n", website, ip_c)
+			log.Info().Msgf("> %s. IN A %s", website, ip_c)
 		}
 	} else {
 		ip_addr, ok := node.HashIPStorage[node.Nodeid][hashedWebsite]
-		system.Printf("> The Website %s has been hashed to %d\n", website, hashedWebsite)
+		log.Info().Msgf("> The Website %s has been hashed to %d", website, hashedWebsite)
 		if ok {
-			system.Println("> Retrieving from Local Storage")
+			log.Info().Msg("Retrieving from Local Storage")
 			for _, ip_c := range ip_addr {
-				system.Printf("> %s. IN A %s\n", website, ip_c)
+				log.Info().Msgf("> %s. IN A %s", website, ip_c)
 			}
 		} else {
 			succPointer, hopCount := node.FindSuccessor(hashedWebsite, 0)
-			system.Println("> Number of Hops:", hopCount)
+			log.Info().Msgf("> Number of Hops: %d", hopCount)
 			// log hopcount into the log file using the library
-			system.Printf(">  The Website would be stored at it's succesor %d : %s\n", succPointer.Nodeid, succPointer.IP)
+			log.Info().Msgf("> The Website would be stored at it's succesor Nodeid: %d IP: %s", succPointer.Nodeid, succPointer.IP)
 			msg := message.RequestMessage{Type: GET, TargetId: hashedWebsite}
 			reply := node.CallRPC(msg, succPointer.IP)
 			if reply.QueryResponse != nil {
-				system.Println("> Retrieving from Chord Network")
+				log.Info().Msg("Retrieving from Chord Network")
 				for _, ip_c := range reply.QueryResponse {
-					system.Printf("> %s. IN A %s\n", website, ip_c)
+					log.Info().Msgf("> %s. IN A %s", website, ip_c)
 				}
 			} else {
 				ips, err := net.LookupIP(website)
 				if err != nil {
-					system.Printf("> Could not get IPs: %v\n", err)
+					log.Error().Err(err).Msg("Could not get IPs")
 					return
 				}
 				ip_addresses := []string{}
-				system.Println("IP ADDRESSES", ip_addresses)
+				log.Info().Msgf("IP ADDRESSES %v", ip_addresses)
 
 				for _, ip := range ips {
 					ip_addresses = append(ip_addresses, ip.String())
-					system.Printf("> %s. IN A %s\n", website, ip.String())
+					log.Info().Msgf("> %s. IN A %s", website, ip.String())
 				}
 				node.CachedQuery[hashedWebsite] = LRUCache{value: ip_addresses, cacheTime: node.CacheTime}
 				reply = node.CallRPC(message.RequestMessage{Type: PUT, TargetId: succPointer.Nodeid, Payload: map[uint64][]string{hashedWebsite: ip_addresses}}, succPointer.IP)
@@ -107,7 +108,7 @@ func (node *Node) QueryDNS(website string) {
 						}
 					}
 				} else {
-					systemcommsin.Println("Put failed")
+					log.Error().Msg("Put failed")
 				}
 			}
 		}
@@ -122,6 +123,9 @@ Upon receiving a PUT message, or signal, it will simply
 */
 func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool {
 	//systemcommsin.Println("Recieving a request to insert values into storage")
+	if node.HashIPStorage == nil {
+		node.HashIPStorage = make(map[uint64]map[uint64][]string)
+	}
 	_, ok := node.HashIPStorage[succesorId]
 	if !ok {
 		node.HashIPStorage[succesorId] = map[uint64][]string{}
@@ -134,10 +138,10 @@ func (node *Node) PutQuery(succesorId uint64, payload map[uint64][]string) bool 
 }
 
 /*
-Replicate is called periodically to replicate all the storage entries to a new node. 
+Replicate is called periodically to replicate all the storage entries to a new node.
 Replicated data is only sent to "REPLICATION_FACTOR" nodes
 */
-func (node *Node) replicate () {
+func (node *Node) replicate() {
 	for {
 		time.Sleep(5 * time.Second)
 		replicationSuccessor := make([]Pointer, REPLICATION_FACTOR)
@@ -160,7 +164,7 @@ func (node *Node) replicate () {
 
 /*
 Processes the REPLICATE Type message received.
-1. If the node's entry is not there, then dump the entire payload there, as it is the only entry. 
+1. If the node's entry is not there, then dump the entire payload there, as it is the only entry.
 2. If the node's entry already exists, then add the new keys to it
 */
 func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string) bool {
@@ -176,7 +180,7 @@ func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string)
 }
 
 /*
-Given a hashed website name, return the records associated with it if it exists, else return nil. 
+Given a hashed website name, return the records associated with it if it exists, else return nil.
 */
 func (node *Node) GetQuery(hashedId uint64) []string { // unused
 	ip_addr, ok := node.HashIPStorage[node.Nodeid][hashedId]
@@ -188,8 +192,8 @@ func (node *Node) GetQuery(hashedId uint64) []string { // unused
 }
 
 /*
-Called when a SHIFT message is received. This means that there are new nodes in the network. The node will 
-ask you to handover all the entries that falls between you and it. This method helps process this logic. 
+Called when a SHIFT message is received. This means that there are new nodes in the network. The node will
+ask you to handover all the entries that falls between you and it. This method helps process this logic.
 */
 func (node *Node) GetShiftRecords(prececId uint64) map[uint64][]string {
 	returnPayload := make(map[uint64][]string)
@@ -215,29 +219,25 @@ func (node *Node) writeToStorage() {
 	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
 	jsonData, err := json.Marshal(node.HashIPStorage[node.Nodeid])
 	if err != nil {
-		fmt.Println(err)
+		log.Error().Err(err).Msg("Error marshalling the JSON data")
 		return
 	}
-	if node.Logging {
-		fmt.Printf("JSON data: %s\n", jsonData)
-	}
+	log.Debug().Msgf("JSON data: %s", jsonData)
 	// Write to the file, create it if it doesn't exist
 	// Append to the file or create it if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		fmt.Printf("Error opening or creating the file: %v\n", err)
+		log.Error().Err(err).Msg("Error opening or creating the file")
 		return
 	}
 
 	// Write the content to the file
 	_, err = file.Write(jsonData)
 	if err != nil {
-		fmt.Printf("Error writing to the file: %v\n", err)
+		log.Error().Err(err).Msg("Error writing to the file")
 		return
 	}
-	if node.Logging {
-		fmt.Printf("JSON data written to file: %s\n", filePath)
-	}
+	log.Debug().Msgf("JSON data written to file: %s", filePath)
 	defer file.Close()
 }
 
@@ -251,7 +251,7 @@ func (node *Node) readFromStorage() {
 	// Open the file for reading
 	file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		fmt.Printf("Error opening or creating the file for reading: %v\n", err)
+		log.Error().Err(err).Msg("Error opening or creating the file for reading")
 		return
 	}
 	defer file.Close()
@@ -259,16 +259,14 @@ func (node *Node) readFromStorage() {
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&storage)
 	if err != nil {
-		fmt.Printf("Error decoding the JSON data: %v\n", err)
+		log.Error().Err(err).Msg("Error decoding the JSON data")
 		return
 	}
 
-	if node.Logging {
-		fmt.Printf("Data read from file\n")
-	}
+	log.Info().Msgf("JSON data read from file: %s", filePath)
 
 	for key, value := range storage {
-		fmt.Printf("Key: %v, Value: %v\n", key, value)
+		log.Debug().Msgf("Key: %v, Value: %v\n", key, value)
 	}
 	node.HashIPStorage = storage
 }

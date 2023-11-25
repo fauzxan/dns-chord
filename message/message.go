@@ -4,7 +4,7 @@ Defines the structure for the Request and Response messages.
 package message
 
 import (
-	"fmt"
+	"github.com/rs/zerolog/log"
 )
 
 // Sample message structure. To be replaced with a struct for protobuff
@@ -31,10 +31,10 @@ type ResponseMessage struct {
 */
 // Message utility function to print the request message
 func (msg *RequestMessage) PrintContent() {
-	fmt.Println("Message content:", msg)
+	log.Info().Msgf("Message content: %v", msg)
 }
 
 // Message utility function to print the response message
 func (msg *ResponseMessage) PrintContent() {
-	fmt.Println("Message content:", msg)
+	log.Info().Msgf("Message content: %v", msg)
 }
