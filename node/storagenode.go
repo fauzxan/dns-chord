@@ -222,7 +222,7 @@ func (node *Node) writeToStorage() {
 		log.Error().Err(err).Msg("Error marshalling the JSON data")
 		return
 	}
-	log.Info().Msgf("JSON data: %s", jsonData)
+	log.Debug().Msgf("JSON data: %s", jsonData)
 	// Write to the file, create it if it doesn't exist
 	// Append to the file or create it if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
@@ -237,7 +237,7 @@ func (node *Node) writeToStorage() {
 		log.Error().Err(err).Msg("Error writing to the file")
 		return
 	}
-	log.Info().Msgf("JSON data written to file: %s", filePath)
+	log.Debug().Msgf("JSON data written to file: %s", filePath)
 	defer file.Close()
 }
 
@@ -266,7 +266,7 @@ func (node *Node) readFromStorage() {
 	log.Info().Msgf("JSON data read from file: %s", filePath)
 
 	for key, value := range storage {
-		log.Info().Msgf("Key: %v, Value: %v\n", key, value)
+		log.Debug().Msgf("Key: %v, Value: %v\n", key, value)
 	}
 	node.HashIPStorage = storage
 }

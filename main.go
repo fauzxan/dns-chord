@@ -39,6 +39,7 @@ func showmenu() {
 
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	// get port from cli arguments (specified by user)
 	err := godotenv.Load()
 	if err != nil {
@@ -129,7 +130,7 @@ func main() {
 			fmt.Scanln(&input)
 			me.QueryDNS(input)
 			// Resume logging
-			zerolog.SetGlobalLevel(zerolog.DebugLevel)
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		case "m":
 			showmenu()
 		default:

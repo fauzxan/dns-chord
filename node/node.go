@@ -75,41 +75,41 @@ The default method called by all RPCs. This method receives different
 types of requests, and calls the appropriate functions.
 */
 func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *message.ResponseMessage) error {
-	log.Info().Msgf("Message of type %s received.", msg.Type)
+	log.Debug().Msgf("Message of type %s received.", msg.Type)
 	switch msg.Type {
 	case PING:
-		log.Info().Msg("Received PING message")
+		log.Debug().Msg("Received PING message")
 		reply.Type = ACK
 	case FIND_SUCCESSOR:
-		log.Info().Msgf("Received a message to FIND SUCCESSOR of %d", msg.TargetId)
+		log.Debug().Msgf("Received a message to FIND SUCCESSOR of %d", msg.TargetId)
 		pointer, _ := node.FindSuccessor(msg.TargetId, msg.HopCount)
 		reply.Type = ACK
 		reply.Nodeid = pointer.Nodeid
 		reply.IP = pointer.IP
 	case NOTIFY:
-		log.Info().Msgf("Received a message to NOTIFY me about a new predecessor %d", msg.TargetId)
+		log.Debug().Msgf("Received a message to NOTIFY me about a new predecessor %d", msg.TargetId)
 		status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
 		if status {
 			reply.Type = ACK
 		}
 	case GET_PREDECESSOR:
-		log.Info().Msg("Received a message to GET PREDECESSOR")
+		log.Debug().Msg("Received a message to GET PREDECESSOR")
 		reply.Nodeid = node.Predecessor.Nodeid
 		reply.IP = node.Predecessor.IP
 	case GET:
-		log.Info().Msg("Received a message to GET DNS record")
+		log.Debug().Msg("Received a message to GET DNS record")
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
 	case GETSOME:
-		log.Info().Msg("Received a message to GET SOME DNS records")
+		log.Debug().Msg("Received a message to GET SOME DNS records")
 		reply.Payload = node.GetShiftRecords(msg.TargetId)
 	case PUT:
-		log.Info().Msg("Received a message to INSERT a query")
+		log.Debug().Msg("Received a message to INSERT a query")
 		status := node.PutQuery(msg.TargetId, msg.Payload)
 		if status {
 			reply.Type = ACK
 		}
 	case REPLICATE:
-		log.Info().Msg("Received a message to REPLICATE data")
+		log.Debug().Msg("Received a message to REPLICATE data")
 		status := node.processReplicate(msg.TargetId, msg.Payload)
 		if status {
 			reply.Type = ACK
