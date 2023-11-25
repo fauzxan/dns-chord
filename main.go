@@ -14,6 +14,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // Color coded logs
@@ -35,10 +38,11 @@ func showmenu() {
 }
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	// get port from cli arguments (specified by user)
 	err := godotenv.Load()
 	if err != nil {
-		system.Println("Error getting env variables...")
+		log.Error().Msg("Error getting env variables...")
 	}
 
 	var port string
@@ -48,16 +52,16 @@ func main() {
 	myIpAddress := utility.GetOutboundIP().String()
 	reader := bufio.NewReader(os.Stdin)
 	// read input from user
-	system.Print("Enter your port number:")
+	system.Println("Enter your port number:")
 	port, err = reader.ReadString('\n')
 	if err != nil {
-		system.Fprintln(os.Stderr, "Error reading input:", err)
+		log.Error().Err(err).Msg("Error reading input")
 	}
 	system.Println("Enter IP address and port used to join network:")
 	// read input from user
 	helperIp, err = reader.ReadString('\n')
 	if err != nil {
-		system.Fprintln(os.Stderr, "Error reading input:", err)
+		log.Error().Err(err).Msg("Error reading input")
 	}
 
 	var addr = myIpAddress + ":" + port
@@ -68,25 +72,24 @@ func main() {
 		IP:            addr[:len(addr)-1],
 		CachedQuery:   make(map[uint64]node.Cache, 69),
 		HashIPStorage: make(map[uint64]map[uint64][]string, 69),
-		Logging:       true,
 	}
 
-	system.Println(addr)
-	system.Println("My id is:", me.Nodeid)
+	log.Info().Str("Address", addr)
+	log.Info().Uint64("My id is", me.Nodeid)
 
 	// Bind yourself to a port and listen to it
 	tcpAddr, err := net.ResolveTCPAddr("tcp", me.IP)
 	if err != nil {
-		system.Println("Error resolving TCP address", err)
+		log.Error().Err(err).Msg("Error resolving TCP address")
 	}
 	inbound, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
-		system.Println("Could not listen to TCP address", err)
+		log.Error().Err(err).Msg("Could not listen to TCP address")
 	}
 
 	// Register RPC methods and accept incoming requests
 	rpc.Register(&me)
-	system.Println("Node is runnning at IP address:", tcpAddr)
+	log.Info().Msgf("Node is running at IP address: %s", tcpAddr.String())
 	go rpc.Accept(inbound)
 
 	// Join the network using helperIp
@@ -97,38 +100,40 @@ func main() {
 	for {
 		time.Sleep(1000)
 		var input string
+		system.Println("********************************")
+		system.Println("     Enter 1, 2, 3, 4, 5, m:    ")
+		system.Println("********************************")
 		fmt.Scanln(&input)
 
 		switch input {
 		case "1":
-			me.Logging = false
+			system.Println("Printing Fingertable:")
 			me.PrintFingers()
-			me.Logging = true
 		case "2":
-			me.Logging = false
-			system.Println("\n\nSuccessor")
+			system.Println("Printing Successor and Predecessor:")
+			system.Println("Successor:")
 			me.PrintSuccessor()
-			system.Println("Predecessor")
+			system.Println("Predecessor:")
 			me.PrintPredecessor()
-			me.Logging = true
 		case "3":
-			me.Logging = false
+			system.Println("Printing Node Storage:")
 			me.PrintStorage()
-			me.Logging = true
 		case "4":
-			me.Logging = false
+			system.Println("Printing Cache:")
 			me.PrintCache()
-			me.Logging = true
 		case "5":
-			me.Logging = false
-			system.Print("Please Type the Website: ")
+			log.Info().Msg("Querying website:")
+			system.Println("Please type the website:")
+			// Pause logging
+			zerolog.SetGlobalLevel(zerolog.Disabled)
 			fmt.Scanln(&input)
 			me.QueryDNS(input)
-			me.Logging = true
+			// Resume logging
+			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		case "m":
 			showmenu()
 		default:
-			system.Println("Invalid input bro...")
+			log.Warn().Msg("Invalid input...")
 		}
 	}
 }
