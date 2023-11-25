@@ -1,3 +1,6 @@
+/*
+Provides basic, frequently used utilities for the main code.
+*/
 package main
 
 import (

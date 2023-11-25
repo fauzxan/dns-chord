@@ -14,7 +14,7 @@ import (
 */
 
 /*
-Node utility function to call RPC given a request message, and a destination IP address
+Node utility function to call RPC given a request message, and a destination IP address.
 */
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
 	log.Info().Msgf("Nodeid: %d IP: %s is sending message %v to IP: %s", node.Nodeid, node.IP, msg, IP)
@@ -33,36 +33,8 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 		reply.Type = EMPTY
 		return reply
 	}
-	log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
+	log.Info().Msgf("Received reply from %s", IP)
 	return reply
-}
-
-/*
-Node utility function to check if an ID is in a given range (a, b].
-*/
-func belongsTo(id, a, b uint64) bool {
-	if a == b {
-		return true
-	}
-	if a < b {
-		return a < id && id <= b
-	} else {
-		return a < id || id <= b
-	}
-}
-
-/*
-Node utility function to check if an ID is in a given range (a, b).
-*/
-func between(id, a, b uint64) bool {
-	if a == b {
-		return true
-	}
-	if a < b {
-		return a < id && id < b
-	} else {
-		return a < id || id < b
-	}
 }
 
 /*
@@ -106,5 +78,33 @@ func (node *Node) PrintCache() {
 	log.Info().Msg("CACHE TABLE REQUESTED")
 	for id, cache := range node.CachedQuery {
 		log.Info().Msgf(">id: %d value: %s", id, cache.value)
+	}
+}
+
+/*
+Node utility function to check if an ID is in a given range (a, b].
+*/
+func belongsTo(id, a, b uint64) bool {
+	if a == b {
+		return true
+	}
+	if a < b {
+		return a < id && id <= b
+	} else {
+		return a < id || id <= b
+	}
+}
+
+/*
+Node utility function to check if an ID is in a given range (a, b).
+*/
+func between(id, a, b uint64) bool {
+	if a == b {
+		return true
+	}
+	if a < b {
+		return a < id && id < b
+	} else {
+		return a < id || id < b
 	}
 }
