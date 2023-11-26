@@ -39,6 +39,7 @@ func showmenu() {
 
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	// get port from cli arguments (specified by user)
 	err := godotenv.Load()
