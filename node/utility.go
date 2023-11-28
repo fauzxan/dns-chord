@@ -21,7 +21,7 @@ func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.Respons
 	clnt, err := rpc.Dial("tcp", IP)
 	reply := message.ResponseMessage{}
 	if err != nil {
-		log.Error().Err(err).Msg("Error Dialing RPC")
+		log.Error().Err(err).Msg(msg.Type)
 		log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
 		reply.Type = EMPTY
 		return reply

@@ -168,14 +168,20 @@ Processes the REPLICATE Type message received.
 2. If the node's entry already exists, then add the new keys to it
 */
 func (node *Node) processReplicate(senderId uint64, payload map[uint64][]string) bool {
-	_, ok := node.HashIPStorage[senderId]
+	if node.HashIPStorage == nil {
+		node.HashIPStorage = make(map[uint64]map[uint64][]string)
+	}
+
+	innerMap, ok := node.HashIPStorage[senderId]
 	if !ok {
-		node.HashIPStorage[senderId] = payload
+		innerMap = make(map[uint64][]string)
+		node.HashIPStorage[senderId] = innerMap
 	}
 
 	for key, ip_cache := range payload {
-		node.HashIPStorage[senderId][key] = ip_cache
+		innerMap[key] = ip_cache
 	}
+
 	return true
 }
 
