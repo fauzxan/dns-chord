@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"strings"
 	"time"
 
 	"core.com/utility"
@@ -94,8 +95,17 @@ func main() {
 	log.Info().Msgf("Node is running at IP address: %s", tcpAddr.String())
 	go rpc.Accept(inbound)
 
-	// Join the network using helperIp
-	me.JoinNetwork(helperIp[:len(helperIp)-1])
+	helperIp = helperIp[:len(helperIp)-1]
+
+	/*
+		When a node first joins, it checks if it is the first node, then creates a new
+		chord network, or joins an existing chord network accordingly.
+	*/
+	if len(strings.Split(helperIp, ":")) == 1 { // I am the only node in this network
+		me.CreateNetwork()
+	} else {
+		me.JoinNetwork(helperIp)
+	}
 
 	showmenu()
 	// Keep the parent thread alive

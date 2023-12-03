@@ -157,7 +157,7 @@ func (node *Node) replicate() {
 				continue
 			}
 			msg := message.RequestMessage{Type: REPLICATE, TargetId: node.Nodeid, Payload: node.HashIPStorage[node.Nodeid]}
-			go node.CallRPC(msg, pointer.IP)
+			node.CallRPC(msg, pointer.IP)
 		}
 	}
 }
@@ -222,7 +222,7 @@ Write the entry to persistent storage within the container.
 It opens file in write or (create and write) mode.
 */
 func (node *Node) writeToStorage() {
-	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
+	filePath := fmt.Sprintf("./data/%s.json", node.IP)
 	jsonData, err := json.Marshal(node.HashIPStorage[node.Nodeid])
 	if err != nil {
 		log.Error().Err(err).Msg("Error marshalling the JSON data")
@@ -252,7 +252,7 @@ Reads file from local container storage.
 It opens file in read or (create and read) mode.
 */
 func (node *Node) readFromStorage() {
-	filePath := fmt.Sprintf("/app/data/%s.json", node.IP)
+	filePath := fmt.Sprintf("./data/%s.json", node.IP)
 
 	// Open the file for reading
 	file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)

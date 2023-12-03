@@ -1,5 +1,5 @@
 /*
-The provided codebase implements a simplified Chord protocol, a decentralized peer-to-peer (P2P) distributed hash table (DHT)
+This repository implements a simplified Chord protocol: a decentralized peer-to-peer (P2P) distributed hash table (DHT)
 for distributed data storage and lookup. The system orchestrates nodes forming a ring-based network structure where each node
 maintains information about its successor, predecessor, and a portion of the network keyspace. It includes functionalities for
 node joining, stabilizing the network, and updating finger tables, enabling efficient decentralized lookup of key-value pairs
@@ -15,8 +15,9 @@ import (
 	// "math"
 	// "net"
 	// "os"
+	"fmt"
 	"math"
-	"strings"
+	"sync"
 	"time"
 
 	"core.com/message"
@@ -28,6 +29,9 @@ import (
 var system = color.New(color.FgHiGreen).Add(color.BgBlack)
 var systemcommsin = color.New(color.FgHiMagenta).Add(color.BgBlack)
 var systemcommsout = color.New(color.FgHiYellow).Add(color.BgBlack)
+
+// Mutex to prevent race condition when accessing SuccList
+var mu sync.Mutex
 
 type Pointer struct {
 	Nodeid uint64 // ID of the pointed Node
@@ -46,19 +50,21 @@ type Node struct {
 	CachedQuery   map[uint64]LRUCache            // caching queries on the node locally
 	HashIPStorage map[uint64]map[uint64][]string // storage for hashed ips associated with the node
 	CacheTime     uint64                         // To keep track of scalar timestamp to assign to LRUCache
+	SuccList      []Pointer                      // Maintain a list of successors for fault tolerance
 }
 
 // Constants
 const (
 	M                  = 32
 	CACHE_SIZE         = 5
-	REPLICATION_FACTOR = 1
+	REPLICATION_FACTOR = 2
 )
 
 // Message types.
 const (
 	PING                   = "ping"                   // Used to check predecessor.
 	ACK                    = "ack"                    // Used for general acknowledgements.
+	GET_SUCCESSOR          = "get_successor"          // Used in RPC call to get node.Successor
 	FIND_SUCCESSOR         = "find_successor"         // Used to find successor.
 	CLOSEST_PRECEDING_NODE = "closest_preceding_node" // Used to find the closest preceding node, given a successor id.
 	GET_PREDECESSOR        = "get_predecessor"        // Used to get the predecessor of some node.
@@ -80,6 +86,10 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 	case PING:
 		log.Debug().Msg("Received PING message")
 		reply.Type = ACK
+	case GET_SUCCESSOR:
+		log.Debug().Msgf("Received a message to GET SUCCESSOR of %d", node.Nodeid)
+		reply.Nodeid = node.Successor.Nodeid
+		reply.IP = node.Successor.IP
 	case FIND_SUCCESSOR:
 		log.Debug().Msgf("Received a message to FIND SUCCESSOR of %d", msg.TargetId)
 		pointer, _ := node.FindSuccessor(msg.TargetId, msg.HopCount)
@@ -110,54 +120,63 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		}
 	case REPLICATE:
 		log.Debug().Msg("Received a message to REPLICATE data")
-		status := node.processReplicate(msg.TargetId, msg.Payload)
-		if status {
-			reply.Type = ACK
-		}
-
+		node.processReplicate(msg.TargetId, msg.Payload)
+		reply.Type = ACK
 	default:
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
 }
 
-/*
-When a node first joins, it checks if it is the first node, then creates a new
-chord network, or joins an existing chord network accordingly.
-*/
-func (node *Node) JoinNetwork(helper string) {
-	if len(strings.Split(helper, ":")) == 1 { // I am the only node in this network
-		log.Info().Msg("> Creating a new network...")
-		node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
-		node.Predecessor = Pointer{}
-		node.FingerTable = make([]Pointer, M)
-		go node.FixFingers()
-		log.Info().Msg("> Finger table has been updated...")
-		for i := 0; i < len(node.FingerTable); i++ {
-			log.Info().Msgf("> Finger[%d]: Nodeid: %d IP: %s", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
-		}
-	} else { // I am not the only one in this network, and I am joining using someone elses address-> "helper"
-		log.Info().Msgf("Contacting node in existing network at address: %s", helper)
-		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: node.Nodeid}, helper)
-		node.Successor = Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
-		log.Info().Msgf("My successor is: Nodeid: %d IP: %s", node.Successor.Nodeid, node.Successor.IP)
-		node.Predecessor = Pointer{}
-		node.FingerTable = make([]Pointer, M)
-		go node.FixFingers()
-		log.Info().Msg("> Finger table has been updated...")
-		for i := 0; i < len(node.FingerTable); i++ {
-			log.Info().Msgf("> Finger[%d]: Nodeid: %d IP: %s", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
-		}
-		log.Info().Msg("Performing key re-distribution")
-		reply = node.CallRPC(message.RequestMessage{Type: GETSOME, TargetId: node.Successor.Nodeid}, node.Successor.IP)
-		_, ok := node.HashIPStorage[node.Nodeid]
-		if !ok {
-			node.HashIPStorage[node.Nodeid] = map[uint64][]string{}
-		}
-		for hashedWebsite := range reply.Payload {
-			node.HashIPStorage[node.Nodeid][hashedWebsite] = reply.Payload[hashedWebsite]
-		}
+// Create new network (genesis node)
+func (node *Node) CreateNetwork() {
+	log.Info().Msg("> Creating a new network...")
+	node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
+	node.Predecessor = Pointer{}
+	node.FingerTable = make([]Pointer, M)
+	go node.FixFingers()
+	log.Info().Msg("> Finger table has been updated...")
+	for i := 0; i < len(node.FingerTable); i++ {
+		log.Info().Msgf("> Finger[%d]: Nodeid: %d IP: %s", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
 	}
+
+	// Initialize SuccList with self.
+	myPointer := Pointer{node.Nodeid, node.IP}
+	node.SuccList = []Pointer{myPointer}
+
+	go node.stabilize()
+	go node.CheckPredecessor()
+	go node.replicate()
+}
+
+// Join existing chord network
+func (node *Node) JoinNetwork(helper string) {
+	log.Info().Msgf("Contacting node in existing network at address: %s", helper)
+	reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: node.Nodeid}, helper)
+	node.Successor = Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
+	log.Info().Msgf("My successor is: Nodeid: %d IP: %s", node.Successor.Nodeid, node.Successor.IP)
+	node.Predecessor = Pointer{}
+	node.FingerTable = make([]Pointer, M)
+	go node.FixFingers()
+	log.Info().Msg("> Finger table has been updated...")
+	for i := 0; i < len(node.FingerTable); i++ {
+		log.Info().Msgf("> Finger[%d]: Nodeid: %d IP: %s", i+1, node.FingerTable[i].Nodeid, node.FingerTable[i].IP)
+	}
+
+	log.Info().Msg("Performing key re-distribution")
+	reply = node.CallRPC(message.RequestMessage{Type: GETSOME, TargetId: node.Successor.Nodeid}, node.Successor.IP)
+	_, ok := node.HashIPStorage[node.Nodeid]
+	if !ok {
+		node.HashIPStorage[node.Nodeid] = map[uint64][]string{}
+	}
+	for hashedWebsite := range reply.Payload {
+		node.HashIPStorage[node.Nodeid][hashedWebsite] = reply.Payload[hashedWebsite]
+	}
+
+	// Initialize SuccList with self.
+	myPointer := Pointer{node.Nodeid, node.IP}
+	node.SuccList = []Pointer{myPointer}
+
 	go node.stabilize()
 	go node.CheckPredecessor()
 	go node.replicate()
@@ -245,27 +264,42 @@ func (node *Node) stabilize() {
 			message.RequestMessage{Type: GET_PREDECESSOR, TargetId: node.Successor.Nodeid, IP: node.Successor.IP},
 			node.Successor.IP,
 		)
-		sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
-		if (sucessorsPredecessor != Pointer{}) {
-			// The new dude in between you and your successor is not dead, then my true successor is the new dude. Or you're the only dude.
-			if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
-				node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
+
+		// [3000, 3001, 3000]
+
+		// Current successor is dead. Look at successor list for next successor.
+		if reply.Type == EMPTY {
+			// get next successor from SuccList and make it your successor
+			for _, pointer := range node.SuccList[1:] {
+				if node.checkSuccessorAlive(pointer) {
+					node.Successor = pointer
+				}
 			}
+
+			// Current successor is alive. Check if it's predecessor lies between you and your current successor. If yes, node.Successor = the middle fella
 		} else {
-			node.Successor, _ = node.FindSuccessor(node.Nodeid, 0)
-			if (node.Successor == Pointer{}) {
-				node.Successor = Pointer{Nodeid: node.Nodeid, IP: node.IP}
+			sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
+			if (sucessorsPredecessor != Pointer{}) {
+				// The new dude in between you and your successor is not dead, then my true successor is the new dude. Or you're the only dude.
+				// fmt.Printf("\nCHECKING IF %d is between (%d, %d)\n", sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid)
+				if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
+					node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
+				}
 			}
 		}
-		if node.Nodeid != node.Successor.Nodeid {
-			reply := node.CallRPC(
-				message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
-				node.Successor.IP,
-			)
-			if reply.Type == ACK {
-				log.Info().Msgf("Successfully notified successor of it's new predecessor Nodeid: %d IP: %s\n", node.Nodeid, node.IP)
-			}
+
+		// Notify your new successor (whoever it is) that you are it's predecessor
+		reply = node.CallRPC(
+			message.RequestMessage{Type: NOTIFY, TargetId: node.Nodeid, IP: node.IP},
+			node.Successor.IP,
+		)
+		if reply.Type == ACK {
+			log.Info().Msgf("Successfully notified successor of it's new predecessor Nodeid: %d IP: %s\n", node.Nodeid, node.IP)
 		}
+
+		// Recompute SuccList
+		node.maintainSuccList()
+		// replicate
 	}
 }
 
@@ -310,4 +344,24 @@ func (node *Node) CheckPredecessor() {
 			log.Info().Msgf("Predecessor Nodeid: %d IP: %s is alive", node.Predecessor.Nodeid, node.Predecessor.IP)
 		}
 	}
+}
+
+func (node *Node) maintainSuccList() {
+
+	mu.Lock()
+	myPointer := Pointer{Nodeid: node.Nodeid, IP: node.IP}
+	node.SuccList = []Pointer{myPointer}
+	for i := 0; i < REPLICATION_FACTOR; i++ {
+		lastSucc := node.SuccList[len(node.SuccList)-1]
+		reply := node.CallRPC(message.RequestMessage{Type: GET_SUCCESSOR}, lastSucc.IP)
+		nextSucc := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
+		node.SuccList = append(node.SuccList, nextSucc)
+		fmt.Println("SUCCYLIST IS HERERERERREREREEEEE: ", node.SuccList)
+	}
+	mu.Unlock()
+}
+
+func (node *Node) checkSuccessorAlive(pointer Pointer) bool {
+	reply := node.CallRPC(message.RequestMessage{Type: PING}, pointer.IP)
+	return reply.Type == ACK
 }
