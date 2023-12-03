@@ -1,4 +1,4 @@
-module core.com
+module github.com/fauzxan/dns-chord
 
 go 1.21.1
 

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"core.com/utility"
+	"github.com/fauzxan/dns-chord/utility"
 
-	"core.com/node"
+	"github.com/fauzxan/dns-chord/node"
 
 	"github.com/fatih/color"
 	"github.com/joho/godotenv"

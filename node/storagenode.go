@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"core.com/message"
-	"core.com/utility"
+	"github.com/fauzxan/dns-chord/message"
+	"github.com/fauzxan/dns-chord/utility"
 	"github.com/rs/zerolog/log"
 )
 

@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"core.com/message"
+	"github.com/fauzxan/dns-chord/message"
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
 )
