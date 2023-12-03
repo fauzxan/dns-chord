@@ -3,7 +3,7 @@ package node
 import (
 	"net/rpc"
 
-	"github.com/fauzxan/dns-chord/message"
+	"github.com/fauzxan/dns-chord/v2/message"
 	"github.com/rs/zerolog/log"
 )
 
