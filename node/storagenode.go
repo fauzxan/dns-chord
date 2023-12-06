@@ -66,7 +66,7 @@ func (node *Node) QueryDNS(website string) {
 			}
 		} else {
 			succPointer, hopCount := node.FindSuccessor(hashedWebsite, 0)
-			log.Info().Msgf("HOP COUNT: %d", hopCount)
+			log.Info().Msgf("HOP COUNT:%d", hopCount)
 			// log hopcount into the log file using the library
 			log.Info().Msgf("> The Website would be stored at it's succesor Nodeid: %d IP: %s", succPointer.Nodeid, succPointer.IP)
 			msg := message.RequestMessage{Type: GET, TargetId: hashedWebsite}

@@ -127,7 +127,7 @@ func main() {
 	/*
 	Load the data from the CSV file and store it in memory
 	*/
-	dataList, err := utility.ReadCSV("./website_data/" + "70000" + ".csv")
+	dataList, err := utility.ReadCSV("./website_data/" + "websites" + ".csv")
 	if err != nil {
 		fmt.Println("Error reading CSV:", err)
 		return

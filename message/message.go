@@ -22,6 +22,7 @@ type ResponseMessage struct {
 	IP            string // IP of the node in the response message
 	QueryResponse []string
 	Payload       map[uint64][]string
+	HopCount	  int
 }
 
 /*

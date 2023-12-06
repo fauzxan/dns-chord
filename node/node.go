@@ -86,10 +86,11 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 		reply.IP = node.Successor.IP
 	case FIND_SUCCESSOR:
 		log.Debug().Msgf("Received a message to FIND SUCCESSOR of %d", msg.TargetId)
-		pointer, _ := node.FindSuccessor(msg.TargetId, msg.HopCount)
+		pointer, hopCount := node.FindSuccessor(msg.TargetId, msg.HopCount)
 		reply.Type = ACK
 		reply.Nodeid = pointer.Nodeid
 		reply.IP = pointer.IP
+		reply.HopCount = hopCount
 	case NOTIFY:
 		log.Debug().Msgf("Received a message to NOTIFY me about a new predecessor %d", msg.TargetId)
 		status := node.Notify(Pointer{Nodeid: msg.TargetId, IP: msg.IP})
@@ -191,7 +192,7 @@ func (node *Node) FindSuccessor(id uint64, hopCount int) (Pointer, int) {
 	if (p != Pointer{} && p.Nodeid != node.Nodeid) {
 
 		reply := node.CallRPC(message.RequestMessage{Type: FIND_SUCCESSOR, TargetId: id, HopCount: hopCount}, p.IP)
-		return Pointer{Nodeid: reply.Nodeid, IP: reply.IP}, hopCount
+		return Pointer{Nodeid: reply.Nodeid, IP: reply.IP}, reply.HopCount
 	} else {
 		return node.Successor, hopCount
 	}
