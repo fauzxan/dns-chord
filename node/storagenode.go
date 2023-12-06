@@ -223,7 +223,8 @@ It opens file in write or (create and write) mode.
 */
 func (node *Node) writeToStorage() {
 	filePath := fmt.Sprintf("./data/%s.json", node.IP)
-	jsonData, err := json.Marshal(node.HashIPStorage[node.Nodeid])
+	myStorage := node.HashIPStorage
+	jsonData, err := json.Marshal(myStorage)
 	if err != nil {
 		log.Error().Err(err).Msg("Error marshalling the JSON data")
 		return

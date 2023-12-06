@@ -15,13 +15,12 @@ import (
 	// "math"
 	// "net"
 	// "os"
-	"fmt"
 	"math"
 	"sync"
 	"time"
 
-	"github.com/fauzxan/dns-chord/v2/message"
 	"github.com/fatih/color"
+	"github.com/fauzxan/dns-chord/v2/message"
 	"github.com/rs/zerolog/log"
 )
 
@@ -281,7 +280,6 @@ func (node *Node) stabilize() {
 			sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 			if (sucessorsPredecessor != Pointer{}) {
 				// The new dude in between you and your successor is not dead, then my true successor is the new dude. Or you're the only dude.
-				// fmt.Printf("\nCHECKING IF %d is between (%d, %d)\n", sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid)
 				if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
 					node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 				}
@@ -356,7 +354,6 @@ func (node *Node) maintainSuccList() {
 		reply := node.CallRPC(message.RequestMessage{Type: GET_SUCCESSOR}, lastSucc.IP)
 		nextSucc := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 		node.SuccList = append(node.SuccList, nextSucc)
-		fmt.Println("SUCCYLIST IS HERERERERREREREEEEE: ", node.SuccList)
 	}
 	mu.Unlock()
 }
