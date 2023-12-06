@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/fauzxan/dns-chord/v2/node"
 
 	"github.com/fatih/color"
-	"github.com/joho/godotenv"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -22,6 +22,9 @@ import (
 
 // Color coded logs
 var system = color.New(color.FgCyan).Add(color.BgBlack)
+
+// Set the number of queries to pass in when 5 is pressed.
+const numQueries = 100
 
 /*
 Show a list of options to choose from.
@@ -39,19 +42,33 @@ func showmenu() {
 }
 
 func main() {
+	
+	
+	/*
+	********************
+	Logging setup
+	********************
+	*/
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	// get port from cli arguments (specified by user)
-	err := godotenv.Load()
+	
+	file, err := os.Create("./logs/" + strconv.Itoa(numQueries) + ".log")
 	if err != nil {
-		log.Error().Msg("Error getting env variables...")
+		log.Fatal().Err(err).Msg("Error creating log file")
 	}
+	defer file.Close()
+	logWriter := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{Out: os.Stdout}, file)
+	log.Logger = zerolog.New(logWriter).With().Timestamp().Logger()
+	/*
+	********************
+	End Logging Setup
+	********************
+	*/
 
+	// get port from cli arguments (specified by user)
 	var port string
 	var helperIp string
 
-	// Read your own port number and also the IP address of the other node, if new network
 	myIpAddress := utility.GetOutboundIP().String()
 	reader := bufio.NewReader(os.Stdin)
 	// read input from user
@@ -107,6 +124,15 @@ func main() {
 		me.JoinNetwork(helperIp)
 	}
 
+	/*
+	Load the data from the CSV file and store it in memory
+	*/
+	dataList, err := utility.ReadCSV("./website_data/" + "70000" + ".csv")
+	if err != nil {
+		fmt.Println("Error reading CSV:", err)
+		return
+	}
+
 	showmenu()
 	// Keep the parent thread alive
 	for {
@@ -134,14 +160,22 @@ func main() {
 			system.Println("Printing Cache:")
 			me.PrintCache()
 		case "5":
-			log.Info().Msg("Querying website:")
-			system.Println("Please type the website:")
+			log.Info().Msgf("Querying %v websites", numQueries)
 			// Pause logging
 			zerolog.SetGlobalLevel(zerolog.Disabled)
-			fmt.Scanln(&input)
+			// fmt.Scanln(&input)
 			// Resume logging
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
-			me.QueryDNS(input)
+			start := time.Now().UnixMilli()
+			for _, query := range dataList[:numQueries]{
+				// log.Info().Msg(query)
+				go me.QueryDNS(query)
+			}
+			end := time.Now().UnixMilli()
+			timeTaken := end - start
+			log.Info().Msgf("TIME %v", timeTaken)
+		case "6":
+			me.PrintSuccList()
 		case "m":
 			showmenu()
 		default:

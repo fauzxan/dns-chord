@@ -17,24 +17,33 @@ import (
 Node utility function to call RPC given a request message, and a destination IP address.
 */
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
-	log.Info().Msgf("Nodeid: %d IP: %s is sending message %v to IP: %s", node.Nodeid, node.IP, msg, IP)
+	log.Debug().Msgf("Nodeid: %d IP: %s is sending message %v to IP: %s", node.Nodeid, node.IP, msg, IP)
 	clnt, err := rpc.Dial("tcp", IP)
 	reply := message.ResponseMessage{}
 	if err != nil {
-		log.Error().Err(err).Msg(msg.Type)
-		log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
+		log.Warn().Err(err).Msg(msg.Type)
+		log.Debug().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
 		reply.Type = EMPTY
 		return reply
 	}
 	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
 	if err != nil {
-		log.Error().Err(err).Msg("Error calling RPC")
-		log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
+		log.Warn().Err(err).Msg("Error calling RPC")
+		log.Debug().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
 		reply.Type = EMPTY
 		return reply
 	}
-	log.Info().Msgf("Received reply from %s", IP)
+	log.Debug().Msgf("Received reply from %s", IP)
 	return reply
+}
+
+/*
+Function to check if the node passed in as parameter is still alive. This essentially performs the same function as checkPredecessor
+described in the paper, but with only one successor at a time.
+*/
+func (node *Node) checkSuccessorAlive(pointer Pointer) bool {
+	reply := node.CallRPC(message.RequestMessage{Type: PING}, pointer.IP)
+	return reply.Type == ACK
 }
 
 /*
@@ -79,6 +88,11 @@ func (node *Node) PrintCache() {
 	for id, cache := range node.CachedQuery {
 		log.Info().Msgf(">id: %d value: %s", id, cache.value)
 	}
+}
+
+func (node *Node) PrintSuccList() {
+	log.Info().Msg("SUCC LIST REQUESTED")
+	system.Println(node.SuccList)
 }
 
 /*

@@ -9,6 +9,7 @@
 *.dylib
 *.env
 *.com
+*.log
 
 # Test binary, built with `go test -c`
 *.test
@@ -22,3 +23,5 @@
 # Go workspace file
 go.work
 core.com
+dns-chord
+*.json

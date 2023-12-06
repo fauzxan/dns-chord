@@ -46,7 +46,7 @@ func (node *Node) QueryDNS(website string) {
 	node.CacheTime += 1
 
 	if strings.HasPrefix(website, "www.") {
-		log.Info().Msg("Removing Prefix")
+		log.Debug().Msg("Removing Prefix")
 		website = website[4:]
 	}
 	hashedWebsite := utility.GenerateHash(website)
@@ -66,7 +66,7 @@ func (node *Node) QueryDNS(website string) {
 			}
 		} else {
 			succPointer, hopCount := node.FindSuccessor(hashedWebsite, 0)
-			log.Info().Msgf("> Number of Hops: %d", hopCount)
+			log.Info().Msgf("HOP COUNT: %d", hopCount)
 			// log hopcount into the log file using the library
 			log.Info().Msgf("> The Website would be stored at it's succesor Nodeid: %d IP: %s", succPointer.Nodeid, succPointer.IP)
 			msg := message.RequestMessage{Type: GET, TargetId: hashedWebsite}
@@ -223,6 +223,21 @@ It opens file in write or (create and write) mode.
 */
 func (node *Node) writeToStorage() {
 	filePath := fmt.Sprintf("./data/%s.json", node.IP)
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		// Create an empty JSON object
+		emptyJSON := []byte("{}")
+
+		// Write the empty JSON object to the file
+		err := os.WriteFile(filePath, emptyJSON, 0644)
+		if err != nil {
+			fmt.Println("Error creating file:", err)
+			return
+		}
+	}
+	_, ok := node.HashIPStorage[node.Nodeid]
+	if !ok{
+		return
+	}
 	jsonData, err := json.Marshal(node.HashIPStorage[node.Nodeid])
 	if err != nil {
 		log.Error().Err(err).Msg("Error marshalling the JSON data")
@@ -253,7 +268,17 @@ It opens file in read or (create and read) mode.
 */
 func (node *Node) readFromStorage() {
 	filePath := fmt.Sprintf("./data/%s.json", node.IP)
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		// Create an empty JSON object
+		emptyJSON := []byte("{}")
 
+		// Write the empty JSON object to the file
+		err := os.WriteFile(filePath, emptyJSON, 0644)
+		if err != nil {
+			fmt.Println("Error creating file:", err)
+			return
+		}
+	}
 	// Open the file for reading
 	file, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -269,7 +294,7 @@ func (node *Node) readFromStorage() {
 		return
 	}
 
-	log.Info().Msgf("JSON data read from file: %s", filePath)
+	log.Warn().Msgf("JSON data read from file: %s", filePath)
 
 	for key, value := range storage {
 		log.Debug().Msgf("Key: %v, Value: %v\n", key, value)

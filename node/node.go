@@ -10,12 +10,6 @@ like finding successors and notifying or updating neighboring nodes.
 package node
 
 import (
-	// "encoding/json"
-	// "fmt"
-	// "math"
-	// "net"
-	// "os"
-	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -228,7 +222,7 @@ func (node *Node) FixFingers() {
 
 	for {
 		time.Sleep(1 * time.Second)
-		log.Info().Msg("Fixing fingers...")
+		log.Debug().Msg("Fixing fingers...")
 		for id := range node.FingerTable {
 			nodePlusTwoI := (node.Nodeid + uint64(math.Pow(2, float64(id))))
 			power := uint64(math.Pow(2, float64(M)))
@@ -281,7 +275,6 @@ func (node *Node) stabilize() {
 			sucessorsPredecessor := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 			if (sucessorsPredecessor != Pointer{}) {
 				// The new dude in between you and your successor is not dead, then my true successor is the new dude. Or you're the only dude.
-				// fmt.Printf("\nCHECKING IF %d is between (%d, %d)\n", sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid)
 				if between(sucessorsPredecessor.Nodeid, node.Nodeid, node.Successor.Nodeid) {
 					node.Successor = Pointer{Nodeid: sucessorsPredecessor.Nodeid, IP: sucessorsPredecessor.IP}
 				}
@@ -294,7 +287,7 @@ func (node *Node) stabilize() {
 			node.Successor.IP,
 		)
 		if reply.Type == ACK {
-			log.Info().Msgf("Successfully notified successor of it's new predecessor Nodeid: %d IP: %s\n", node.Nodeid, node.IP)
+			log.Debug().Msgf("Successfully notified successor of it's new predecessor Nodeid: %d IP: %s\n", node.Nodeid, node.IP)
 		}
 
 		// Recompute SuccList
@@ -341,11 +334,15 @@ func (node *Node) CheckPredecessor() {
 			}
 
 		} else {
-			log.Info().Msgf("Predecessor Nodeid: %d IP: %s is alive", node.Predecessor.Nodeid, node.Predecessor.IP)
+			log.Debug().Msgf("Predecessor Nodeid: %d IP: %s is alive", node.Predecessor.Nodeid, node.Predecessor.IP)
 		}
 	}
 }
 
+/*
+Called by stabilize to update the successor list based on the node.Successor pointer. This list is intended to improve fault tolerance
+by preventing nodes from getting partitioned from the network.
+*/
 func (node *Node) maintainSuccList() {
 
 	mu.Lock()
@@ -356,12 +353,7 @@ func (node *Node) maintainSuccList() {
 		reply := node.CallRPC(message.RequestMessage{Type: GET_SUCCESSOR}, lastSucc.IP)
 		nextSucc := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 		node.SuccList = append(node.SuccList, nextSucc)
-		fmt.Println("SUCCYLIST IS HERERERERREREREEEEE: ", node.SuccList)
+		log.Debug().Msgf("SUCCYLIST IS HERERERERREREREEEEE: %p", node.SuccList)
 	}
 	mu.Unlock()
-}
-
-func (node *Node) checkSuccessorAlive(pointer Pointer) bool {
-	reply := node.CallRPC(message.RequestMessage{Type: PING}, pointer.IP)
-	return reply.Type == ACK
 }
