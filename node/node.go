@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fauzxan/dns-chord/v2/message"
 	"github.com/fatih/color"
+	"github.com/fauzxan/dns-chord/v2/message"
 	"github.com/rs/zerolog/log"
 )
 
@@ -354,7 +354,7 @@ func (node *Node) maintainSuccList() {
 		reply := node.CallRPC(message.RequestMessage{Type: GET_SUCCESSOR}, lastSucc.IP)
 		nextSucc := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 		node.SuccList = append(node.SuccList, nextSucc)
-		log.Debug().Msgf("SUCCYLIST IS HERERERERREREREEEEE: %p", node.SuccList)
+		fmt.Println("SUCCYLIST IS HERERERERREREREEEEE: ", node.SuccList)
 	}
 	mu.Unlock()
 }
