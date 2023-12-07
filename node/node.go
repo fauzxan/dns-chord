@@ -354,7 +354,7 @@ func (node *Node) maintainSuccList() {
 		reply := node.CallRPC(message.RequestMessage{Type: GET_SUCCESSOR}, lastSucc.IP)
 		nextSucc := Pointer{Nodeid: reply.Nodeid, IP: reply.IP}
 		node.SuccList = append(node.SuccList, nextSucc)
-		fmt.Println("SUCCYLIST IS HERERERERREREREEEEE: ", node.SuccList)
+		log.Debug().Msgf("SUCCYLIST IS HERERERERREREREEEEE: %v", node.SuccList)
 	}
 	mu.Unlock()
 }
