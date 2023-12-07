@@ -169,7 +169,7 @@ func main() {
 			start := time.Now().UnixMilli()
 			for _, query := range dataList[:numQueries]{
 				// log.Info().Msg(query)
-				go me.QueryDNS(query)
+				me.QueryDNS(query)
 			}
 			end := time.Now().UnixMilli()
 			timeTaken := end - start
