@@ -295,10 +295,23 @@ func (node *Node) readFromStorage() {
 		return
 	}
 
-	log.Warn().Msgf("JSON data read from file: %s", filePath)
+	log.Debug().Msgf("JSON data read from file: %s", filePath)
 
 	for key, value := range storage {
 		log.Debug().Msgf("Key: %v, Value: %v\n", key, value)
 	}
 	node.HashIPStorage = storage
+}
+
+func (node *Node) QueryTradDNS(website string) {
+	ips, err := net.LookupIP(website)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not get IPs")
+		return
+	}
+	ip_addresses := []string{}
+	for _, ip := range ips {
+		ip_addresses = append(ip_addresses, ip.String())
+		log.Info().Msgf("> %s. IN A %s", website, ip.String())
+	}
 }

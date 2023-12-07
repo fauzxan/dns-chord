@@ -36,22 +36,23 @@ func showmenu() {
 	system.Println("Press 2 to see the successor and predecessor")
 	system.Println("Press 3 to see the node storage")
 	system.Println("Press 4 to see the cache")
-	system.Println("Press 5 to query a website")
+	system.Println("Press 5 to see the Successor List")
+	system.Println("Press 6 to query N websites on Chord DNS")
+	system.Println("Press 7 to query N websites on Trad DNS")
 	system.Println("Press m to see the menu")
 	system.Println("********************************")
 }
 
 func main() {
-	
-	
+
 	/*
-	********************
-	Logging setup
-	********************
+		********************
+		Logging setup
+		********************
 	*/
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	
+
 	file, err := os.Create("./logs/" + strconv.Itoa(numQueries) + ".log")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error creating log file")
@@ -60,9 +61,9 @@ func main() {
 	logWriter := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{Out: os.Stdout}, file)
 	log.Logger = zerolog.New(logWriter).With().Timestamp().Logger()
 	/*
-	********************
-	End Logging Setup
-	********************
+		********************
+		End Logging Setup
+		********************
 	*/
 
 	// get port from cli arguments (specified by user)
@@ -125,7 +126,7 @@ func main() {
 	}
 
 	/*
-	Load the data from the CSV file and store it in memory
+		Load the data from the CSV file and store it in memory
 	*/
 	dataList, err := utility.ReadCSV("./website_data/" + "websites" + ".csv")
 	if err != nil {
@@ -160,22 +161,50 @@ func main() {
 			system.Println("Printing Cache:")
 			me.PrintCache()
 		case "5":
+			me.PrintSuccList()
+		case "6":
 			log.Info().Msgf("Querying %v websites", numQueries)
 			// Pause logging
-			zerolog.SetGlobalLevel(zerolog.Disabled)
+			// zerolog.SetGlobalLevel(zerolog.Disabled)
 			// fmt.Scanln(&input)
 			// Resume logging
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			start := time.Now().UnixMilli()
-			for _, query := range dataList[:numQueries]{
+			for _, query := range dataList[:numQueries] {
 				// log.Info().Msg(query)
 				me.QueryDNS(query)
 			}
 			end := time.Now().UnixMilli()
 			timeTaken := end - start
 			log.Info().Msgf("TIME %v", timeTaken)
-		case "6":
-			me.PrintSuccList()
+		case "7":
+			/*
+				********************
+				Logging setup
+				********************
+			*/
+			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+			file, err := os.Create("./logs/trad-" + strconv.Itoa(numQueries) + ".log")
+			if err != nil {
+				log.Fatal().Err(err).Msg("Error creating log file")
+			}
+			defer file.Close()
+			logWriter := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{Out: os.Stdout}, file)
+			log.Logger = zerolog.New(logWriter).With().Timestamp().Logger()
+
+			log.Info().Msgf("Querying %v websites on Trad DNS", numQueries)
+			// zerolog.SetGlobalLevel(zerolog.Disabled)
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			start := time.Now().UnixMilli()
+			for _, query := range dataList[:numQueries] {
+				me.QueryTradDNS(query)
+			}
+			end := time.Now().UnixMilli()
+			timeTaken := end - start
+			log.Info().Msgf("TRAD DNS TIME: %v", timeTaken)
+
 		case "m":
 			showmenu()
 		default:
