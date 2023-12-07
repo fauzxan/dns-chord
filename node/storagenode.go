@@ -235,10 +235,11 @@ func (node *Node) writeToStorage() {
 		}
 	}
 	_, ok := node.HashIPStorage[node.Nodeid]
-	if !ok{
+	if !ok {
 		return
 	}
-	jsonData, err := json.Marshal(node.HashIPStorage[node.Nodeid])
+	myStorage := node.HashIPStorage
+	jsonData, err := json.Marshal(myStorage)
 	if err != nil {
 		log.Error().Err(err).Msg("Error marshalling the JSON data")
 		return

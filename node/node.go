@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fauzxan/dns-chord/v2/message"
 	"github.com/fatih/color"
+	"github.com/fauzxan/dns-chord/v2/message"
 	"github.com/rs/zerolog/log"
 )
 
