@@ -22,7 +22,8 @@ import (
 
 // Color coded logs
 var system = color.New(color.FgCyan).Add(color.BgBlack)
-var numQueries = 500
+var numQueries = 100
+
 /*
 Show a list of options to choose from.
 */
@@ -156,8 +157,8 @@ func main() {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			start := time.Now().UnixMilli()
 			for _, query := range dataList[:numQueries] {
-			  // log.Info().Msg(query)
-			  me.QueryDNS(query)
+				// log.Info().Msg(query)
+				me.QueryDNS(query)
 			}
 			end := time.Now().UnixMilli()
 			timeTaken := end - start
