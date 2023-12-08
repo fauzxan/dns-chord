@@ -17,23 +17,23 @@ import (
 Node utility function to call RPC given a request message, and a destination IP address.
 */
 func (node *Node) CallRPC(msg message.RequestMessage, IP string) message.ResponseMessage {
-	log.Info().Msgf("Nodeid: %d IP: %s is sending message %v to IP: %s", node.Nodeid, node.IP, msg, IP)
+	log.Debug().Msgf("Nodeid: %d IP: %s is sending message %v to IP: %s", node.Nodeid, node.IP, msg, IP)
 	clnt, err := rpc.Dial("tcp", IP)
 	reply := message.ResponseMessage{}
 	if err != nil {
 		log.Error().Err(err).Msg(msg.Type)
-		log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
+		log.Debug().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
 		reply.Type = EMPTY
 		return reply
 	}
 	err = clnt.Call("Node.HandleIncomingMessage", msg, &reply)
 	if err != nil {
 		log.Error().Err(err).Msg("Error calling RPC")
-		log.Info().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
+		log.Debug().Msgf("Nodeid: %d IP: %s received reply %v from IP: %s", node.Nodeid, node.IP, reply, IP)
 		reply.Type = EMPTY
 		return reply
 	}
-	log.Info().Msgf("Received reply from %s", IP)
+	log.Debug().Msgf("Received reply from %s", IP)
 	return reply
 }
 

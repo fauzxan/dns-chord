@@ -270,7 +270,7 @@ func (node *Node) readFromStorage() {
 		return
 	}
 
-	log.Info().Msgf("JSON data read from file: %s", filePath)
+	log.Debug().Msgf("JSON data read from file: %s", filePath)
 
 	for key, value := range storage {
 		log.Debug().Msgf("Key: %v, Value: %v\n", key, value)

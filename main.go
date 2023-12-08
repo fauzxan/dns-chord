@@ -22,7 +22,7 @@ import (
 
 // Color coded logs
 var system = color.New(color.FgCyan).Add(color.BgBlack)
-
+var numQueries = 500
 /*
 Show a list of options to choose from.
 */
@@ -108,12 +108,17 @@ func main() {
 	}
 
 	showmenu()
+	dataList, err := utility.ReadCSV("./website_data/" + "websites" + ".csv")
+	if err != nil {
+		fmt.Println("Error reading CSV:", err)
+		return
+	}
 	// Keep the parent thread alive
 	for {
 		time.Sleep(1000)
 		var input string
 		system.Println("********************************")
-		system.Println("     Enter 1, 2, 3, 4, 5, m:    ")
+		system.Println("     Enter 1, 2, 3, 4, 5, 6, m:    ")
 		system.Println("********************************")
 		fmt.Scanln(&input)
 
@@ -142,6 +147,21 @@ func main() {
 			// Resume logging
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			me.QueryDNS(input)
+		case "6":
+			log.Info().Msgf("Querying %v websites", numQueries)
+			// Pause logging
+			// zerolog.SetGlobalLevel(zerolog.Disabled)
+			// fmt.Scanln(&input)
+			// Resume logging
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			start := time.Now().UnixMilli()
+			for _, query := range dataList[:numQueries] {
+			  // log.Info().Msg(query)
+			  me.QueryDNS(query)
+			}
+			end := time.Now().UnixMilli()
+			timeTaken := end - start
+			log.Info().Msgf("TIME %v", timeTaken)
 		case "m":
 			showmenu()
 		default:

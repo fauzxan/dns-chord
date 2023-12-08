@@ -227,7 +227,7 @@ func (node *Node) FixFingers() {
 
 	for {
 		time.Sleep(1 * time.Second)
-		log.Info().Msg("Fixing fingers...")
+		log.Debug().Msg("Fixing fingers...")
 		for id := range node.FingerTable {
 			nodePlusTwoI := (node.Nodeid + uint64(math.Pow(2, float64(id))))
 			power := uint64(math.Pow(2, float64(M)))
@@ -292,7 +292,7 @@ func (node *Node) stabilize() {
 			node.Successor.IP,
 		)
 		if reply.Type == ACK {
-			log.Info().Msgf("Successfully notified successor of it's new predecessor Nodeid: %d IP: %s\n", node.Nodeid, node.IP)
+			log.Debug().Msgf("Successfully notified successor of it's new predecessor Nodeid: %d IP: %s\n", node.Nodeid, node.IP)
 		}
 
 		// Recompute SuccList
@@ -339,7 +339,7 @@ func (node *Node) CheckPredecessor() {
 			}
 
 		} else {
-			log.Info().Msgf("Predecessor Nodeid: %d IP: %s is alive", node.Predecessor.Nodeid, node.Predecessor.IP)
+			log.Debug().Msgf("Predecessor Nodeid: %d IP: %s is alive", node.Predecessor.Nodeid, node.Predecessor.IP)
 		}
 	}
 }

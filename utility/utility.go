@@ -3,9 +3,11 @@ package utility
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/csv"
 	"log"
 	"math"
 	"net"
+	"os"
 )
 
 /*
@@ -42,3 +44,31 @@ func GetOutboundIP() net.IP {
 
 	return localAddr.IP
 }
+
+func ReadCSV(filename string) ([]string, error) {
+	// Open the CSV file
+	file, err := os.Open(filename)
+	if err != nil {
+	  return nil, err
+	}
+	defer file.Close()
+  
+	// Create a CSV reader
+	reader := csv.NewReader(file)
+  
+	// Read all records from the CSV
+	records, err := reader.ReadAll()
+	if err != nil {
+	  return nil, err
+	}
+  
+	// Extract the single column and store it in a list of strings
+	var dataList []string
+	for _, record := range records {
+	  if len(record) > 0 {
+		dataList = append(dataList, record[0])
+	  }
+	}
+  
+	return dataList, nil
+  }
