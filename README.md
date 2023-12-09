@@ -24,7 +24,6 @@ Our DNS system builds on top of the Chord protocol, where multiple nodes store D
 1. Install Go. If you haven't already, you may install it from [here](https://go.dev/doc/install).
 
 2. Clone the repository
-    - Open a terminal and clone the repository using the following command
     ```bash
     git clone https://github.com/fauzxan/dns-chord.git
     ```
