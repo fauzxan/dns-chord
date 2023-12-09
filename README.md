@@ -13,6 +13,10 @@ Implementing DNS functionality using chord framework
 <!--
 🚀 [Report]()
 -->
+## System Architecture
+![GitHub Logo](images/flowhcart.png)
+
+Our DNS system builds on top of the Chord protocol, where multiple nodes store DNS records in their storage or local cache. When a user initiates a DNS query, the queried node retrieves the record from its local storage or cache if available. If the record is not present, the system locates the node holding the requested DNS record in the network. If found, that node returns the requested DNS record. Otherwise, a traditional DNS query is performed to obtain the record, which is then inserted into our network for future lookups.
 
 ## Setup
 
