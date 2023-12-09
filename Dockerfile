@@ -7,9 +7,8 @@ RUN go mod download
 
 ADD . /app
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /core.com
+RUN CGO_ENABLED=0 GOOS=linux go build -o /dns-chord
 
 VOLUME [ "/mydata" ]
-# RUN mkdir -p /app/data
 
-CMD [ "/core.com" ]
+CMD [ "/dns-chord" ]
