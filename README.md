@@ -3,6 +3,8 @@ Implementing DNS functionality using chord framework
 
 🚀 [Problem description](https://github.com/fauzxan/dns-chord/blob/main/documentation/problem-description.md)
 
+🚀 [Documentation](https://pkg.go.dev/github.com/fauzxan/dns-chord/v2@v2.0.1)
+
 ## Setup
 
 ### Local setup
