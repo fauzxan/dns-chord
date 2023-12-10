@@ -13,7 +13,10 @@ Implementing DNS functionality using chord framework
 🚀 [Report](documentation/50_041_Distributed_Systems_Project.pdf)
 
 ## System Architecture
-![DNS on Chord](images/flowhcart.png)
+
+<p align="center">
+    <img src="images/flowhcart.png" width="600"/>
+</p>
 
 Our DNS system builds on top of the Chord protocol, where multiple nodes store DNS records in their storage or local cache. When a user initiates a DNS query, the queried node retrieves the record from its local storage or cache if available. If the record is not present, the system locates the node holding the requested DNS record in the network. If found, that node returns the requested DNS record. Otherwise, a traditional DNS query is performed to obtain the record, which is then inserted into our network for future lookups.
 
@@ -25,6 +28,8 @@ Our DNS system builds on top of the Chord protocol, where multiple nodes store D
 2. Clone the repository
     ```bash
     git clone https://github.com/fauzxan/dns-chord.git
+    cd dns-chord
+    go mod download
     ```
 3. Navigate to the cloned repository
     ```bash
@@ -38,14 +43,14 @@ Our DNS system builds on top of the Chord protocol, where multiple nodes store D
 6. Upon running the command, you will be prompted to input the following information:
     - Your current port number: Enter the port number that you want the Chord node to use. This should be a valid port number (e.g., 3000).  
 
-    ![](gifs/1.gif)
+        ![](gifs/1.gif)
     - Full IP address of the node you're using to join the network:
         - If you are creating a new network, simply press `ENTER` or `RETURN`  
 
-        ![](gifs/2.gif)
+            ![](gifs/2.gif)
         - If you are joining an existing network, provide the full IP address of the node you want to connect to.  
 
-        ![](gifs/3.gif)
+            ![](gifs/3.gif)
 7. We also designed a user-friendly interface to interact with the Chord node and gather information about its state, routing, storage, and cache.  
 
     - **Press 1** to display the fingertable of the current node.  
@@ -69,7 +74,6 @@ Our DNS system builds on top of the Chord protocol, where multiple nodes store D
 
 
 ### Docker setup
-> Docker images are still in development phase!
 To run docker container, just build docker image using 
 
 ```shell
