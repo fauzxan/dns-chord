@@ -10,11 +10,6 @@ like finding successors and notifying or updating neighboring nodes.
 package node
 
 import (
-	// "encoding/json"
-	// "fmt"
-	// "math"
-	// "net"
-	// "os"
 	"math"
 	"sync"
 	"time"
@@ -70,7 +65,7 @@ const (
 	NOTIFY                 = "notify"                 // Used to notify a node about a new predecessor.
 	PUT                    = "put"                    // Used to insert a DNS query.
 	GET                    = "get"                    // Used to retrieve a DNS record.
-	GETSOME                = "get_some"               // Used to shift entries.
+	SHIFT                  = "shift"               	  // Used to shift entries.
 	EMPTY                  = "empty"                  // Placeholder or undefined message type or errenous communications.
 	REPLICATE              = "replicate"              // Used to replicate data.
 )
@@ -108,7 +103,7 @@ func (node *Node) HandleIncomingMessage(msg *message.RequestMessage, reply *mess
 	case GET:
 		log.Debug().Msg("Received a message to GET DNS record")
 		reply.QueryResponse = node.GetQuery(msg.TargetId)
-	case GETSOME:
+	case SHIFT:
 		log.Debug().Msg("Received a message to GET SOME DNS records")
 		reply.Payload = node.GetShiftRecords(msg.TargetId)
 	case PUT:
@@ -163,7 +158,7 @@ func (node *Node) JoinNetwork(helper string) {
 	}
 
 	log.Info().Msg("Performing key re-distribution")
-	reply = node.CallRPC(message.RequestMessage{Type: GETSOME, TargetId: node.Successor.Nodeid}, node.Successor.IP)
+	reply = node.CallRPC(message.RequestMessage{Type: SHIFT, TargetId: node.Successor.Nodeid}, node.Successor.IP)
 	_, ok := node.HashIPStorage[node.Nodeid]
 	if !ok {
 		node.HashIPStorage[node.Nodeid] = map[uint64][]string{}

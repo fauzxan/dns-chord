@@ -1,3 +1,7 @@
+/*
+	Implementation of a subnet-based DNS that uses Chord as it's underlying protocol. The implementation introduced in this repository
+	significantly improves query times and reduces message complexity as compared to legacy DNS systems that are currently in use.
+*/
 package main
 
 import (
@@ -151,8 +155,8 @@ func main() {
 		case "6":
 			log.Info().Msgf("Querying %v websites", numQueries)
 			// Pause logging
-			// zerolog.SetGlobalLevel(zerolog.Disabled)
-			// fmt.Scanln(&input)
+			zerolog.SetGlobalLevel(zerolog.Disabled)
+			fmt.Scanln(&input)
 			// Resume logging
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			start := time.Now().UnixMilli()

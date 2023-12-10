@@ -10,9 +10,8 @@ Implementing DNS functionality using chord framework
 
 🚀 [Documentation](https://pkg.go.dev/github.com/fauzxan/dns-chord/v2@v2.0.1)
 
-<!--
-🚀 [Report]()
--->
+🚀 [Report](documentation/50_041_Distributed_Systems_Project.pdf)
+
 ## System Architecture
 ![DNS on Chord](images/flowhcart.png)
 
